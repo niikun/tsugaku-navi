@@ -44,6 +44,13 @@ osm_data/
 # 包括的なパターンに変更した(該当ファイル自体はリポジトリから削除済み)。
 *_cache.json
 
+# plateau/plateau_data/: PLATEAU建物データ(非OSM、G空間情報センター利用規約)
+# 自体は問題ないが、build_road_sample_points.pyが生成するroad_sample_points_23ku.csv
+# は車道way上のサンプル点(OSM由来の個別座標)を含むため、ml_risk_model/osm_data/と
+# 同じ理由でディレクトリごとdeny-by-defaultにする。集計済みの視界特徴量は
+# plateau/plateau_features/に別途出力しそちらはコミット対象とする。
+plateau/plateau_data/
+
 # 多層防御: ディレクトリ単位の除外(osm_data/)は、対象ファイルが将来別の
 # 場所に作られた場合に無力化される。このプロジェクトで.pkl/.parquetを
 # git管理下に置く正当な理由はない(すべてOSM由来の中間生成物か再生成可能な

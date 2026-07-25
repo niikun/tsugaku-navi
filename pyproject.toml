@@ -5,6 +5,7 @@ description = "歩行者事故リスク推定(地理院タイル版)"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "lxml>=5.3.0",
     "matplotlib>=3.11.1",
     "numpy>=2.4.6",
     "osmium>=4.3.1",

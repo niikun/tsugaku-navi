@@ -1,5 +1,10 @@
 """カバレッジ完全なセル(covered_cells_23ku.txt)の車道サンプル点について、
 PLATEAU LOD1建物データから視界特徴を計算し、セル単位に集計する。
+
+出力(`plateau_features/sightline_features_23ku.csv`)はセル単位の集計統計
+(平均・最小・分散・開放方向割合)のみで、個々のPLATEAU建物ポリゴンや
+車道サンプル点の座標そのものは含まないため、コミット可能な場所
+(`plateau_data/`の外)に置く。
 """
 import csv
 import os
@@ -15,7 +20,8 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PARQUET_PATH = os.path.join(BASE_DIR, "plateau_data", "buildings_23ku.parquet")
 ROAD_POINTS_PATH = os.path.join(BASE_DIR, "plateau_data", "road_sample_points_23ku.csv")
 COVERED_CELLS_PATH = os.path.join(BASE_DIR, "plateau_data", "covered_cells_23ku.txt")
-OUT_PATH = os.path.join(BASE_DIR, "plateau_data", "sightline_features_23ku.csv")
+OUT_DIR = os.path.join(BASE_DIR, "plateau_features")
+OUT_PATH = os.path.join(OUT_DIR, "sightline_features_23ku.csv")
 
 
 def main():
@@ -78,11 +84,12 @@ def main():
             "sightline_mean_open_fraction": np.mean(open_fracs),
         })
 
+    os.makedirs(OUT_DIR, exist_ok=True)
     with open(OUT_PATH, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
         writer.writeheader()
         writer.writerows(rows)
-    print(f"\nセル単位の視界特徴を保存: {OUT_PATH} ({len(rows)}セル)")
+    print(f"\nセル単位の視界特徴を保存(コミット可能): {OUT_PATH} ({len(rows)}セル)")
 
 
 if __name__ == "__main__":
