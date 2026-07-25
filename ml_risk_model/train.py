@@ -150,13 +150,17 @@ def main():
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--unfreeze-last-n", type=int, default=3)
     parser.add_argument("--manifest", default=None)
+    parser.add_argument("--osm-train-path", default=None,
+                         help="曝露量(vehicle_length_m)を引くOSM特徴量CSVのパスを明示指定する"
+                              "(--manifestで本番以外のmanifestを指定する場合、対応するOSM CSVも必要)")
     parser.add_argument("--model-suffix", default="_poisson")
     parser.add_argument("--save-last-n-epochs", type=int, default=5)
     args = parser.parse_args()
 
     manifest_path = args.manifest or os.path.join(
         BASE_DIR, "dataset", f"manifest_train_counts_{args.grid}m_{args.style}.csv")
-    osm_train_path = os.path.join(BASE_DIR, "osm_features", f"osm_features_train_{args.style}.csv")
+    osm_train_path = args.osm_train_path or os.path.join(
+        BASE_DIR, "osm_features", f"osm_features_train_{args.style}.csv")
 
     vehicle_length_lookup = load_vehicle_length(osm_train_path)
 
