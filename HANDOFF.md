@@ -1,7 +1,8 @@
 # 引き継ぎメモ
 
-## 現在地: フェーズ0・フェーズ1完了(train全量タイル取得・回帰テスト済み)。
-## フェーズ2(CNN学習)着手直前。GPU利用可能を確認済み
+## 現在地: フェーズ0・フェーズ1・フェーズ2の中核(CNN 3run学習・判定)完了。
+## GSI版CNNが旧OSM版CNNの精度を上回る結果(残差Spearman 0.484 vs 0.376)。
+## 23区視界特徴サブセット評価・企画書等の最終化が残作業
 
 背景・全体計画は `../traffic_accident/PLAN_GSI_MIGRATION.md` を参照
 (締切2026-08-23、残り約29日、バッファほぼゼロ)。発覚経緯の全記録は
@@ -243,27 +244,55 @@ tsugaku-navi-gsi/
     └── tile_cache/                     # タイル生キャッシュ、常にgitignore対象
 ```
 
-## 次にやること(優先順)
+## フェーズ2(CNN学習・判定)結果(2026-07-25)
 
-1. `uv add torch torchvision`してから`train.py --style std`を3回実行する
-   (`--model-suffix`を`_poisson_seed42`/`_seed1`/`_seed2`等に変えて別ファイル名で
-   保存すること)。GPU(NVIDIA、CUDA 13.0)を確認済みなので現実的な時間で完了する
-   見込み。**注意**: `--seed`引数はtrain/val分割にのみ使われ、モデル重み初期化
-   はtorch未シード(旧リポジトリのtrain_v3_poisson.pyも同じ設計、torch.manual_seed
-   は呼ばれていない)。「3seed(42,1,2)」という呼称は3回の独立した学習run
-   というラベルであり、モデル初期化の再現可能な乱数シードではない
-   (旧リポジトリからの既知の制約、今回新たに直す必要はない)
-2. `evaluate_cnn.py --style std --model-glob "models/*_seed*_epoch15.pt"`で判定
-   (3seed平均残差SpearmanがOSM版と比べて極端な乖離がないか。乖離があれば
-   PLAN_GSI_MIGRATION §6.Aの診断順序に従う: タイルスタイル→ズームレベル→
-   情報量そのものの差、の順に切り分ける)
-3. `check_final_overdispersion.py --style std --cnn-model <代表チェックポイント>`で
-   フロア・OSM・CNNの条件付き過分散を最終確認
-4. 判定基準(事前登録済み、変更しない): 3seed平均残差Spearmanの差がseed間
-   標準偏差の2倍を超えるかで「フロアを上回る価値」を判定する
-5. 何か新しいファイルを旧プロジェクトからコピーする際は、**必ず
-   `tile|fetch_tile|osmium|.pbf|overpass|stations_cache`を含めて
-   grepチェックしてから**にすること(今回の監査での見落としを繰り返さない)
-6. サブディレクトリを`.gitignore`する際は、パターン追加後に必ず
-   `git check-ignore -v <実際のファイルパス>`で効いているか確認すること
-   (今回`dataset/**/*.png`が実際には無効だった教訓)
+`uv add torch torchvision`でtorch 2.13.0+cu130を導入(GPU: Quadro T1000、
+CUDA 13.0)。1epoch smoke testで動作確認後、`train.py --style std`を
+`--model-suffix`を変えて3回実行(セル42/1/2ラベル、各15epoch、GPU使用、
+1回あたり実測約17分)。
+
+**注意点(既知の制約、今回新たに直していない)**: `--seed`引数はtrain/val
+分割にのみ使われ、モデル重み初期化はtorch未シード(旧リポジトリの
+train_v3_poisson.pyも同じ設計)。「3seed(42,1,2)」は3回の独立した学習run
+というラベルであり、モデル初期化の再現可能な乱数シードではない。
+
+### 判定結果
+
+`evaluate_cnn.py --style std --model-glob "models/risk_model_500m_std_poisson_seed*_epoch15.pt"`:
+
+| モデル | 残差Spearman(全域) |
+|---|---|
+| フロア自身 | 0.000(健全性チェック) |
+| OSM | 0.201 |
+| CNN(GSI std、3run平均±std) | **0.484 ± 0.010** |
+| (参考)旧OSM版CNN(3seed平均±std) | 0.376 ± 0.033 |
+
+**判定基準(事前登録済み)に照らすと**: CNN-OSM差(0.283)はCNN seed間標準偏差
+(0.010)の2倍(0.020)を大きく超えており、「CNNがフロア・OSMを明確に上回る」
+と判定できる。さらに、地理院タイル(std)版CNNは旧OSM版CNNの実測値(0.376)を
+**上回り**、seed間のばらつきも小さい(0.010 vs 0.033、より安定)。フェーズ0.1の
+目視評価(std採用の判断根拠: 建物密度・道路階層の視覚的情報量)と整合する結果。
+
+`check_final_overdispersion.py --style std --cnn-model models/risk_model_500m_std_poisson_seed42_epoch15.pt`:
+単純Spearman(mu, y)はフロア0.709 < OSM0.736 < CNN0.748で、残差Spearmanと
+同じ序列。**ただしCNNの条件付きPearson分散が異常に大きい(310.61、フロア/OSMは
+約4.0)** — 一部セルで予測値muが極端に小さくなっている可能性がある(muが0に
+近いとPearson残差(y-mu)/√muが発散する)。順位ベースの主指標(残差Spearman)は
+この種のスケール較正の歪みに頑健なため判定は覆らないが、**推論時の実際の
+予測件数の較正(offsetの扱い、極端な低予測セルの有無)は今後要確認**。
+risk_model.py相当の推論コード移植時に必ず点検すること。
+
+### 未着手(フェーズ2の残り、フェーズ3へ)
+
+- [ ] CNN予測値の較正異常(条件付き分散310.61)の原因調査
+- [ ] 23区×PLATEAUサブセットでの視界特徴評価(`evaluate_subset_23ku.py`・
+      `evaluate_sightline_23ku.py`相当、後回しリスト参照)
+- [ ] risk_model.py相当の推論エントリポイント移植(road_index.py・
+      osm_feature_lookup.pyは既に用意済み)
+- [ ] フェーズ3: 本番反映・動作確認・企画書/提出物の最終化
+- [ ] 何か新しいファイルを旧プロジェクトからコピーする際は、**必ず
+      `tile|fetch_tile|osmium|.pbf|overpass|stations_cache`を含めて
+      grepチェックしてから**にすること(今回の監査での見落としを繰り返さない)
+- [ ] サブディレクトリを`.gitignore`する際は、パターン追加後に必ず
+      `git check-ignore -v <実際のファイルパス>`で効いているか確認すること
+      (今回`dataset/**/*.png`が実際には無効だった教訓)
