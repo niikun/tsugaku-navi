@@ -135,9 +135,12 @@ def main():
     train_manifest = os.path.join(BASE_DIR, "dataset", f"manifest_train_counts_500m_{style}.csv")
     with open(train_manifest, encoding="utf-8") as f:
         train_rows_raw = list(csv.DictReader(f))
+    # 拡張画像(_aug1等)は元画像と同一セル・同一OSM特徴のため除外する
+    # (augment_dataset.pyがsource_cell_id==cell_idで元画像を判別できるようにしている)。
     train_rows = [
         {"lat": r["lat_center"], "lon": r["lon_center"], "accident_count": r["accident_count"], "cell_id": r["cell_id"]}
         for r in train_rows_raw
+        if r.get("source_cell_id", r["cell_id"]) == r["cell_id"]
     ]
     train_table = build_table(train_rows, lookup)
 
