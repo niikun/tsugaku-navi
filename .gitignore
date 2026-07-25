@@ -17,6 +17,13 @@ tile_cache/
 # ことが判明。実ディレクトリに合わせたパスに修正)。
 ml_risk_model/dataset/
 ml_risk_model/eval_frozen/
+# rebuild_matched_v4_comparison.py が作る検証専用の一致セット(旧OSM版との
+# 真の同一物差し比較用)も同様に除外する。中身はGSI画像・警察庁データ由来の
+# CSVでOSM由来ではないが、本番のdataset/eval_frozenと同じく再生成可能な
+# 検証データのため対象外にする(2026-07-25、ユーザー指摘で.gitignoreの
+# 実効性を都度git check-ignore -vで確認する運用を徹底した際に追加)。
+ml_risk_model/dataset_v4match/
+ml_risk_model/eval_frozen_v4match/
 
 # OSM(またはOverpass API等、OSM本体を参照する外部API)由来のデータ全般は
 # deny-by-default でディレクトリごと除外する。ファイル名パターンでの許可制
