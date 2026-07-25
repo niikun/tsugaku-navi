@@ -29,16 +29,25 @@ def eval_dir(style):
 
 
 def built_env_fraction(image_path):
-    """緑・水色以外のピクセル比率(建造物率の簡易代理指標、エッジ密度とは独立)。
-    地理院タイル(std)は水域=薄い青、緑地=薄緑が典型的なので、
-    それ以外の色(建物・道路のグレー/白/ベージュ)の比率を建造物率とみなす。
+    """緑・水色・無地(白背景)以外のピクセル比率(建造物率の簡易代理指標、
+    エッジ密度とは独立)。
+
+    **修正履歴(2026-07-25)**: 当初は「緑・青以外は建造物」としていたが、
+    地理院タイルの山間部(等高線のみ、建物・土地利用ポリゴンなし)は
+    大部分が白背景で、緑にも青にも該当しないため「建造物」に誤分類され、
+    山間部のbuilt_env_fractionが都市部より高くなる(意味が実態と逆転する)
+    バグがあった。ユーザー指摘により発覚。白背景を「自然(未開発)」に
+    含めるよう修正し、vehicle_length_m(OSM車道延長、独立指標)との
+    Spearman相関が0.198→0.842に改善したことを確認済み
+    (詳細はSTUDY_LOG.md参照)。
     """
     img = Image.open(os.path.join(BASE_DIR, image_path)).convert("RGB")
     arr = np.asarray(img, dtype=np.int16)
     r, g, b = arr[..., 0], arr[..., 1], arr[..., 2]
     is_green = (g > r + 10) & (g > b + 10)
     is_blue = (b > r + 10) & (b > g + 5)
-    is_natural = is_green | is_blue
+    is_white = (r > 240) & (g > 240) & (b > 240)
+    is_natural = is_green | is_blue | is_white
     return float((~is_natural).mean())
 
 
