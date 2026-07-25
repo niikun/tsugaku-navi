@@ -10,9 +10,13 @@ venv/
 ml_risk_model/tile_cache/
 tile_cache/
 
-# 学習用画像データセット(タイル画像の合成物。容量が大きく、再生成可能)
-dataset/**/*.png
-dataset/**/*.jpg
+# 学習用画像データセット・凍結評価セット(タイル画像の合成物。容量が大きく、
+# 再生成可能)。ml_risk_model/配下にあるため、ルート直下を前提にしたパターンでは
+# マッチしない(dataset/**/*.pngはgitignore仕様上「リポジトリルート直下のdataset/」
+# にのみ有効な"anchored"パターンになるため、ml_risk_model/dataset/には効かない
+# ことが判明。実ディレクトリに合わせたパスに修正)。
+ml_risk_model/dataset/
+ml_risk_model/eval_frozen/
 
 # OSM(またはOverpass API等、OSM本体を参照する外部API)由来のデータ全般は
 # deny-by-default でディレクトリごと除外する。ファイル名パターンでの許可制
@@ -32,6 +36,14 @@ osm_data/
 # 座標)が、命名規則ベースの除外パターンでは捕捉されず監査で発覚したため、
 # 包括的なパターンに変更した(該当ファイル自体はリポジトリから削除済み)。
 *_cache.json
+
+# 多層防御: ディレクトリ単位の除外(osm_data/)は、対象ファイルが将来別の
+# 場所に作られた場合に無力化される。このプロジェクトで.pkl/.parquetを
+# git管理下に置く正当な理由はない(すべてOSM由来の中間生成物か再生成可能な
+# キャッシュ)ため、ディレクトリ構造に依存しないファイル形式単位の除外も
+# 重ねて設定する(traffic_accidentリポジトリ側で同種の指摘を受けて追加)。
+*.pkl
+*.parquet
 
 # 学習済みモデルの重み(OSM版からは一切引き継がない。GSI版は再学習後に生成)
 ml_risk_model/models/*.pt

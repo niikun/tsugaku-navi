@@ -13,7 +13,9 @@ OSM由来の
 
 ### 地理院タイル(地図画像)
 
-- 出典: 国土地理院 地理院タイル(標準地図, std)
+- 出典: 国土地理院 地理院タイル。std(標準地図)・pale(淡色地図)の2種別に
+  対応し、フェーズ1で両方を学習データ化しCNN精度を比較する
+  ([ml_risk_model/tiles.py](ml_risk_model/tiles.py)の`TILE_STYLES`参照)
 - 利用規約: https://www.gsi.go.jp/kikakuchousei/kikakuchousei40182.html
 - 出典表示: 「国土地理院」または「地理院タイル」+
   https://maps.gsi.go.jp/development/ichiran.html へのリンクを、
@@ -24,7 +26,8 @@ OSM由来の
 - User-Agent: `tsugaku-navi-gsi/1.0 (contact: niikun0209@gmail.com; ...)`
   ([ml_risk_model/tiles.py](ml_risk_model/tiles.py)参照)
 - タイル画像は逐次取得のみ行い、事前バルクアーカイブ化は行わない
-  (`tile_cache/`は再生成可能なキャッシュとして`.gitignore`対象)
+  (`tile_cache/`・学習用データセット`dataset/`・凍結評価セット`eval_frozen/`は
+  再生成可能な成果物として`.gitignore`対象)
 
 ### 警察庁交通事故統計情報オープンデータ
 
@@ -32,11 +35,17 @@ OSM由来の
   https://www.npa.go.jp/publications/statistics/koutsuu/opendata/index_opendata.html
 - [accident_data/extract_tokyo_pedestrian.py](accident_data/extract_tokyo_pedestrian.py)で処理
 
-### 国土数値情報(行政区域データ等)
+### 国土数値情報(行政区域・鉄道データ等)
 
 - 出典: 国土数値情報(国土交通省)
-  [ml_risk_model/tokyo_boundary.py](ml_risk_model/tokyo_boundary.py)が使う
-  `N03-20240101_13.geojson`(行政区域)等
+  - [ml_risk_model/tokyo_boundary.py](ml_risk_model/tokyo_boundary.py)が使う
+    `N03-20240101_13.geojson`(行政区域)
+  - [ml_risk_model/station_points.py](ml_risk_model/station_points.py)が使う
+    `N02-2022_Station_tokyo.geojson`(鉄道駅、駅からの距離の交絡チェック用)。
+    [ml_risk_model/prepare_station_data.py](ml_risk_model/prepare_station_data.py)が
+    N02(鉄道、2022年度)から生成する一回限りの準備データ。旧リポジトリの
+    Overpass API(OSM本体)依存だった同種の処理を置き換えたもの
+    (HANDOFF.md参照)
 
 ### PLATEAU(3D都市モデル)
 
@@ -73,6 +82,27 @@ OSM由来の
 「OSM(またはOverpass API等〜」セクション参照。新しいOSM由来データの
 出力先ディレクトリ・キャッシュファイル名を追加する際は、必ずそちらにも
 deny-by-defaultのパターンを追加すること。
+
+**実装(フェーズ1)**: 以下の2段階に分けている。
+
+1. [ml_risk_model/extract_osm_raw_cache.py](ml_risk_model/extract_osm_raw_cache.py) —
+   pyosmiumでOSM PBFを1回ストリーム処理し、信号機・横断歩道の個別座標や
+   車道wayの座標列を含む生キャッシュを`ml_risk_model/osm_data/`(常に
+   `.gitignore`対象)に書き出す
+2. [ml_risk_model/extract_osm_features.py](ml_risk_model/extract_osm_features.py) —
+   生キャッシュを読み、セル単位の集計統計のみを`ml_risk_model/osm_features/`
+   (コミット可能、帰属表示付き)にJSON形式で書き出す。pickleではなくJSONに
+   しているのは、`.gitignore`が`*.pkl`/`*.parquet`を「OSM由来の中間生成物」と
+   みなして一律除外する多層防御ルールを持っており、コミット対象はdiffで
+   中身をレビューできる形式にする方が筋が良いため
+
+[ml_risk_model/osm_feature_lookup.py](ml_risk_model/osm_feature_lookup.py)の
+`OSMFeatureLookup`は、セル単位の特徴(車道延長・歩道延長・信号機数等)は
+committable な集計JSONから、信号機/横断歩道への最近傍距離だけは実行時に
+生キャッシュを読んで計算する(結果のスカラー値はどこにもファイル書き戻し
+しない)。[ml_risk_model/road_index.py](ml_risk_model/road_index.py)も同様に、
+ソースコード自体は座標を持たず、生キャッシュ由来のparquetを実行時に読む
+設計(旧リポジトリで「良い設計の手本」と評価された点を踏襲)。
 
 ## 開発時の注意
 

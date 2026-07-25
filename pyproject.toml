@@ -1,0 +1,17 @@
+[project]
+name = "tsugaku-navi-gsi"
+version = "0.1.0"
+description = "歩行者事故リスク推定(地理院タイル版)"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "matplotlib>=3.11.1",
+    "numpy>=2.4.6",
+    "osmium>=4.3.1",
+    "pandas>=3.0.5",
+    "pillow>=12.3.0",
+    "pyarrow>=25.0.0",
+    "pyproj>=3.7.2",
+    "scipy>=1.17.1",
+    "shapely>=2.1.2",
+]

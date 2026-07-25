@@ -3,7 +3,10 @@
 build_dataset.py（学習データ生成）と risk_model.py（推論）の
 両方から使われる。
 
-本リポジトリでは取得元に国土地理院「地理院タイル」(標準地図, std)を使う。
+本リポジトリでは取得元に国土地理院「地理院タイル」を使う。std(標準地図)・
+pale(淡色地図)の2種別に対応し、フェーズ1では両方で学習データを作成して
+CNN精度を比較する(`TILE_STYLES`参照。フェーズ0.1でstdを第一候補、pale次点と
+決定したが、実際の比較検証はフェーズ1で行う)。
 経緯: 別リポジトリ(traffic_accident)で、OSM標準タイルサーバー
 (tile.openstreetmap.org)から取得した画像を学習データに使っていたところ、
 OpenStreetMap Foundationの Tile Usage Policy
@@ -31,14 +34,19 @@ import urllib.request
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TILE_CACHE_DIR = os.path.join(BASE_DIR, "tile_cache")
 
+# 学習データセットが対応済みの地理院タイル種別。フェーズ0.1でstdを第一候補、
+# paleを次点として決定したが、実際の学習・評価では両方を取得しCNN精度を比較する
+# (タイルソースをOSMから地理院タイルに変える、という今回の変更のスコープ内の
+# 選定作業のため、両方試すこと自体は変更範囲外のブレではない)。
+TILE_STYLES = ("std", "pale")
+DEFAULT_TILE_STYLE = "std"
+
 # 地理院タイルの利用規約に明示的なレート制限の記載はないが、OSM対応時と
 # 同水準の保守的な間隔を踏襲する(常識的な利用を維持するため)。
 USER_AGENT = "tsugaku-navi-gsi/1.0 (contact: niikun0209@gmail.com; educational hackathon project)"
 TILE_MIN_INTERVAL_SEC = 0.5
 
-# 標準地図(std)。淡色地図(pale)への切り替えが必要な場合はここを変更する
-# (フェーズ0.1の比較検証で std を第一候補として採用。詳細はPLAN_GSI_MIGRATION.md参照)。
-TILE_URL_TEMPLATE = "https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png"
+TILE_URL_TEMPLATE = "https://cyberjapandata.gsi.go.jp/xyz/{style}/{z}/{x}/{y}.png"
 
 # 地理院タイル(std/pale)の対応ズームレベルは5〜18。500mグリッド(zoom17)は
 # 範囲内だが、将来的な100mグリッド(zoom19相当)は非対応のため、実装する場合は
@@ -83,10 +91,10 @@ def lonlat_to_pixel(lon, lat, zoom):
 _last_download_time = [0.0]
 
 
-def fetch_tile(z, x, y):
+def fetch_tile(z, x, y, style=DEFAULT_TILE_STYLE):
     from PIL import Image
 
-    cache_path = os.path.join(TILE_CACHE_DIR, str(z), str(x), f"{y}.png")
+    cache_path = os.path.join(TILE_CACHE_DIR, style, str(z), str(x), f"{y}.png")
     if os.path.exists(cache_path):
         return Image.open(cache_path).convert("RGB")
 
@@ -96,7 +104,7 @@ def fetch_tile(z, x, y):
     if elapsed < TILE_MIN_INTERVAL_SEC:
         time.sleep(TILE_MIN_INTERVAL_SEC - elapsed)
 
-    url = TILE_URL_TEMPLATE.format(z=z, x=x, y=y)
+    url = TILE_URL_TEMPLATE.format(style=style, z=z, x=x, y=y)
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     with urllib.request.urlopen(req, timeout=15) as resp:
         data = resp.read()
@@ -109,7 +117,7 @@ def fetch_tile(z, x, y):
     return Image.open(io.BytesIO(data)).convert("RGB")
 
 
-def build_cell_image(lat_min, lat_max, lon_min, lon_max, zoom):
+def build_cell_image(lat_min, lat_max, lon_min, lon_max, zoom, style=DEFAULT_TILE_STYLE):
     from PIL import Image
 
     x0, y1 = lonlat_to_pixel(lon_min, lat_min, zoom)  # 左下
@@ -126,7 +134,7 @@ def build_cell_image(lat_min, lat_max, lon_min, lon_max, zoom):
 
     for tx in range(tx_min, tx_max + 1):
         for ty in range(ty_min, ty_max + 1):
-            tile = fetch_tile(zoom, tx, ty)
+            tile = fetch_tile(zoom, tx, ty, style=style)
             canvas.paste(tile, ((tx - tx_min) * 256, (ty - ty_min) * 256))
 
     crop_box = (
@@ -139,10 +147,10 @@ def build_cell_image(lat_min, lat_max, lon_min, lon_max, zoom):
     return cropped.resize((FINAL_IMG_SIZE, FINAL_IMG_SIZE))
 
 
-def fetch_cell_image_for_point(lat, lon, grid_m):
+def fetch_cell_image_for_point(lat, lon, grid_m, style=DEFAULT_TILE_STYLE):
     """指定した緯度経度が属するグリッドセルの地図画像を返す。"""
     zoom = GRID_CONFIGS[grid_m]["zoom"]
     lat_step, lon_step = grid_steps(grid_m)
     gx, gy = cell_id_for(lat, lon, grid_m)
     lat_min, lat_max, lon_min, lon_max = cell_bbox(gx, gy, lat_step, lon_step)
-    return build_cell_image(lat_min, lat_max, lon_min, lon_max, zoom)
+    return build_cell_image(lat_min, lat_max, lon_min, lon_max, zoom, style=style)
