@@ -23,13 +23,18 @@ from torch import nn
 from torchvision import transforms
 from torchvision.models import mobilenet_v2
 
-from tiles import DEFAULT_TILE_STYLE, cell_id_for, fetch_cell_image_for_point, grid_steps
+from tiles import cell_id_for, fetch_cell_image_for_point, grid_steps
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODELS_DIR = os.path.join(BASE_DIR, "models")
 GRID_M = 500
 SEEDS = ["42", "1", "2"]
-TILE_STYLE = DEFAULT_TILE_STYLE
+# 本番採用タイル種別。tiles.DEFAULT_TILE_STYLE("std")とは異なる値を明示指定
+# している点に注意: フェーズ0.1の目視評価ではstdを優先していたが、実際の
+# 学習結果(std/pale比較、STUDY_LOG.md参照)ではpaleがseed間安定性・較正の
+# 健全性で一貫して優位だったため、pale版を本番採用に切り替えた
+# (2026-07-25)。目視評価と学習結果が逆転した教訓もSTUDY_LOG.mdに記録済み。
+TILE_STYLE = "pale"
 MODEL_SUFFIX = "_poisson"
 
 IMAGENET_MEAN = [0.485, 0.456, 0.406]
@@ -40,11 +45,12 @@ _TRANSFORM = transforms.Compose([
     transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
 ])
 
-# 4段階カテゴリの境界値(3境界: p20/p50/p80)。GSI版(std)train全域(3,803セル、
-# 非拡張)への3runアンサンブル予測から算出(2026-07-25、
-# `python risk_model.py --recompute-thresholds`の実行結果)。再学習したら
-# 必ず計算し直すこと(学習データ年数範囲・タイル種別が変われば分布も変わる)。
-CATEGORY_THRESHOLDS = [0.1250891814629237, 2.567613442738851, 5.860166168212891]
+# 4段階カテゴリの境界値(3境界: p20/p50/p80)。GSI版(pale、本番採用)
+# train全域(3,803セル、非拡張)への3runアンサンブル予測から算出
+# (2026-07-25、`python risk_model.py --recompute-thresholds`の実行結果)。
+# 再学習したら必ず計算し直すこと(学習データ年数範囲・タイル種別が変われば
+# 分布も変わる)。
+CATEGORY_THRESHOLDS = [0.17692452073097234, 3.483558177947998, 7.355188115437826]
 CATEGORY_LABELS = ["安全", "やや注意", "要注意", "危険"]
 
 _models = None
@@ -99,18 +105,18 @@ def _load_osm_lookup():
 
 
 def _load_sightline_lookup():
-    """23区・PLATEAUカバレッジ完全セルの視界特徴。データファイルが無い場合は
-    空辞書を返し、呼び出し側はhas_sightline=Falseにフォールバックする
-    (PLATEAU視界特徴の23区評価は現状「後回し」項目、HANDOFF.md参照。
-    データは`../traffic_accident/plateau/plateau_data/sightline_features_23ku.csv`
-    をこのリポジトリの`plateau/plateau_data/`にコピーするか、
-    `plateau/compute_sightline_features.py`で作り直すこと)。
+    """23区・PLATEAUカバレッジ完全セルの視界特徴(集計統計のみ、コミット対象)。
+    `plateau/compute_sightline_features.py`が生成する
+    `plateau/plateau_features/sightline_features_23ku.csv`を読む
+    (1,917セル、2026-07-25にGSI版パイプライン単体で生成・評価済み。
+    STUDY_LOG.md参照)。データファイルが無い場合は空辞書を返し、
+    呼び出し側はhas_sightline=Falseにフォールバックする。
     """
     global _sightline_lookup
     if _sightline_lookup is not None:
         return _sightline_lookup
     import csv
-    path = os.path.join(BASE_DIR, "..", "plateau", "plateau_data", "sightline_features_23ku.csv")
+    path = os.path.join(BASE_DIR, "..", "plateau", "plateau_features", "sightline_features_23ku.csv")
     if not os.path.exists(path):
         _sightline_lookup = {}
         return _sightline_lookup
