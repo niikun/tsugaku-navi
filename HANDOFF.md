@@ -113,26 +113,87 @@
       という実パスに修正した(教訓: サブディレクトリにあるパスをgitignore
       する際は、`**`を使う場合でも実際に`git check-ignore -v`で確認すること)
 
+### 完了(続き、2026-07-25)
+
+- [x] **eval分(valブロック896セル)をstd/pale両方で先行取得**: 破損・欠損なし
+      896/896件、所要時間はどちらも約41.5分(実測。レート制限0.5秒/枚は
+      守られている)
+- [x] **std/pale目視比較→std採用を決定**: 渋谷駅(高密度商業地、事故66件)・
+      本天沼(中密度住宅地、事故3件)の2セルで比較。stdは建物が塗りつぶし
+      (オレンジ)表示で密度・形状が視覚的に強く際立ち、道路も種別ごとに
+      色分けされ階層が判別しやすい。paleは建物が輪郭線のみでコントラストが
+      大幅に低く、CNNが密度・形状パターンを学習する材料としては情報量が
+      少ないと判断。フェーズ0.1のstd優先判断を裏付ける結果
+      - **train全量(3,803セル)はstdのみ取得する**(1スタイル約2.9時間、
+        両方だと約5.9時間のため、片方に絞って時間短縮)。pale版train全量は
+        取得しない。paleはPLAN_GSI_MIGRATION §6.Aの事前登録済みフォールバック
+        (std版CNNがOSM版v4の精度に届かない場合の一回限りの再試行選択肢)
+        として温存する
+- [x] `osm_feature_lookup.py`のCSV出力名を`osm_features_{train,eval}_{style}.csv`
+      とし、std/pale両対応にしてある(pale版は今回evalのみ生成、trainは
+      当面生成しない)
+
 ### 未着手(フェーズ1の残り)
 
-- [ ] **3.2 全学習セル分の地理院タイル取得**: 今はまだ1ブロック分(数セル)の
-      スモークテストのみ。`build_train_set.py --style std`と`--style pale`を
-      実際に全trainブロック(train全セル約3,000件超)・`build_eval_set.py`を
-      valブロック分に対して実行する必要がある。レート制限0.5秒/枚のため、
-      長時間(数時間規模)かかる見込み。std/pale両方を取得する
-      (フェーズ0.1で決定済みのstd優先は維持しつつ、実際の比較検証は
-      このフェーズで行う方針、2026-07-25追加)
-      - 実行後、`osm_feature_lookup.py --style {std,pale}`で
-        `osm_features/osm_features_{train,eval}_{style}.csv`を生成すること
+- [ ] **3.2 train全量(std)の地理院タイル取得**: 実行中(バックグラウンド、
+      3,803セル、約2.9時間見込み)。完了後、`osm_feature_lookup.py --style std`
+      で`osm_features/osm_features_{train,eval}_std.csv`を生成すること
 - [ ] **3.3 回帰テスト**: 画像サイズ・チャンネル数・前処理I/Oが旧パイプラインと
-      一致するか確認(train.py/train_v3_poisson.py相当をまだ移植していないため
-      未着手)
-- [ ] train.py/train_v3_poisson.py相当の学習スクリプト移植は未着手(フェーズ2)。
-      移植時に検討すべき軽量な改善案(2026-07-25、ユーザーからの提案):
-      シフト頑健性のためのデータ拡張(学習時に画像を数十m単位でランダムに
-      平行移動)を追加し、「シフトに対する予測値の安定性」を評価指標に
-      軽く加える。前回断念した経路の細粒度化の根本原因(グリッド整列した
-      構図への過学習)への対策として、低コストで試せる
+      一致するか確認(train.py実行後に着手)
+
+### フェーズ2移植チェックリスト(2026-07-25、v4プロトコル一式の棚卸し)
+
+`../traffic_accident/ml_risk_model/PREREGISTRATION_COUNT_REGRESSION.md`の
+「進行順序」に基づく最小の実行系列: フロア/OSM Poisson(GBDT)→過分散・log1p
+頑健性チェック→CNN Poissonヘッド3seed再学習→判定(残差Spearman比較)→
+(任意)23区視界特徴サブセット評価。
+
+**必須(v3判定プロトコルの中核)** — 2026-07-25、全てコード移植・構文チェック済み
+(train全量データ待ちのため実行はまだ):
+- [x] `augment_dataset.py` — オフラインデータ拡張(回転×反転+明暗ジッター)。
+  `source_cell_id`で同一生画像由来の拡張画像をtrain/val同じ側に固定する設計は
+  維持(でないとリークする)。styleごとのmanifestファイル名に対応
+- [x] `train.py`(旧`train_v3_poisson.py`相当) — CNN Poissonヘッド学習
+  (MobileNetV2、log曝露量=`log(vehicle_length_m+1)`をoffsetとして加算)。
+  3seed(42, 1, 2)・epoch15固定チェックポイントの規律を維持。**未実行**
+  (`uv add torch torchvision`が必要、train全量データ取得後に着手)
+- [x] `evaluate_floor_osm.py`(旧`evaluate_count_regression_v2.py`相当) —
+  フロア/OSM Poisson(GBDT、駅距離・エッジ密度・建造物率+log曝露量)の
+  残差Spearman評価。**主指標**(旧v1の層内Spearmanは移植していない、
+  改訂履歴参照)。scikit-learnをpyproject.tomlに追加済み
+- [x] `evaluate_cnn.py`(旧`evaluate_cnn_count_regression.py`相当) — CNNの
+  残差Spearman評価(フロアはtrain側で学習したものをevalに適用するのみ、
+  eval再学習はリークになるため禁止)。シフト頑健性の副指標追加はCNN学習後に
+  実データで検討する設計(未実装、train.py docstring参照)
+- [x] `check_final_overdispersion.py` — 条件付き過分散・log1p頑健性の最終確認
+  (NB/ZIP切り替えの要否判断)
+
+**判断基準は事前登録済み(結果を見る前に固定、変更しない)**:
+CNN/OSMがフロアを上回るか = 3seed平均残差Spearmanの差がseed間標準偏差の2倍を
+超えること。閾値そのものの後出し変更はしない(v1/v2から一貫した規律)。
+
+**検討要(過去の個別インシデント対応、GSI版で同種の疑問が再発したら参照)**:
+- `check_ensemble_scale_sanity.py` — 特定の予測値が過大に見えた際の桁確認。
+  GSI版でも同様の疑義が出たら流用
+- `diagnose_stacking_artifact.py` — CNN+視界stackingの劣化原因切り分け。
+  視界特徴を使う段階(23区サブセット)で同じ劣化が出たら参照
+- `bootstrap_6yr_vs_4yr.py` / `evaluate_6yr_floor_osm.py` — 学習データ期間
+  (4年 vs 6年)の選択は旧リポジトリで決着済みの過去の意思決定。GSI版で
+  同じ論点を再検証する必要があるかは要判断(データ期間自体はGSI移行と無関係)
+- `cross_evaluate.py` — v1/v2(二値分類・負例サンプリング方式)固有の交差評価。
+  v3は選抜サンプリングを行わないため、この診断はそのままでは不要
+- `extract_cnn_features.py` / `gradcam.py` — CNN特徴のconcat実験・Grad-CAM
+  可視化。判定プロトコルの主要経路ではないが、視界+OSM+CNN concat条件を
+  試す場合や可視化が要る場面で使う
+
+**後回し(23区×PLATEAUサブセット、視界特徴比較。plateau/は移植済みだが評価は未着手)**:
+- `evaluate_subset_23ku.py` — 23区サブセットでフロア/OSM/CNNを再計算
+- `evaluate_sightline_23ku.py` — 視界単独・視界+OSM・CNN+視界stacking・concatの4構成評価
+- `evaluate_sightline_linear_stacking.py` — stackingを線形Poissonコンバイナで再検証
+  (GBDTの量子化アーティファクト対策、diagnose_stacking_artifact.pyの結論を踏まえた版)
+
+**モデル重みの扱い**: 旧`.pt`チェックポイントは一切引き継がない
+(README.md/.gitignore既定方針)。GSI版は必ずゼロから再学習する。
 
 ## 現在のディレクトリ構成
 
@@ -153,6 +214,10 @@ tsugaku-navi-gsi/
     ├── station_points.py / prepare_station_data.py  # 国土数値情報N02由来の駅データ
     ├── spatial_block_split.py          # train/val空間ブロック分割
     ├── build_dataset.py / build_train_set.py / build_eval_set.py  # データセット生成
+    ├── augment_dataset.py              # オフラインデータ拡張(フェーズ2、移植済み未実行)
+    ├── train.py                        # CNN Poissonヘッド学習(フェーズ2、移植済み未実行、torch未導入)
+    ├── evaluate_floor_osm.py / evaluate_cnn.py / check_final_overdispersion.py
+    │                                    # v3判定プロトコルの評価スクリプト(フェーズ2、移植済み未実行)
     ├── edge_density.py
     ├── cell_enumeration.py
     ├── extract_osm_raw_cache.py        # OSM生キャッシュ抽出(常にgitignore対象の出力)
@@ -168,13 +233,20 @@ tsugaku-navi-gsi/
 
 ## 次にやること(優先順)
 
-1. `build_train_set.py`/`build_eval_set.py`をstd/pale両styleで全セル分実行し、
-   `osm_feature_lookup.py`で特徴量CSVを生成する(3.2、いちばん時間のかかる工程)
-2. train.py/train_v3_poisson.py相当の学習スクリプトを移植・新規実装する
-   (フェーズ2、シフト頑健性データ拡張の検討を含む)
-3. 何か新しいファイルを旧プロジェクトからコピーする際は、**必ず
+1. train全量(std、3,803セル)の取得完了を待つ(バックグラウンド実行中)
+2. `augment_dataset.py --style std` → `osm_feature_lookup.py --style std` の順で実行し、
+   拡張済みmanifestとOSM特徴量CSV(train/eval)を揃える
+3. `evaluate_floor_osm.py --style std`を実行し、フロア/OSMの残差Spearmanが
+   旧OSM版の実測値(フロア0.000・OSM0.211、全域)と大きく矛盾しないか確認する
+   (地理院タイル移行はタイル画像のみが変更対象で、OSM特徴量自体は変わらない
+   はずなので、大きく違えばパイプラインのバグを疑うこと)
+4. `uv add torch torchvision`してから`train.py --style std`(3seed: 42, 1, 2)を実行
+5. `evaluate_cnn.py --style std`で判定(3seed平均残差SpearmanがOSM版と比べて
+   極端な乖離がないか。乖離があればPLAN_GSI_MIGRATION §6.Aの診断順序に従う:
+   タイルスタイル→ズームレベル→情報量そのものの差、の順に切り分ける)
+6. 何か新しいファイルを旧プロジェクトからコピーする際は、**必ず
    `tile|fetch_tile|osmium|.pbf|overpass|stations_cache`を含めて
    grepチェックしてから**にすること(今回の監査での見落としを繰り返さない)
-4. サブディレクトリを`.gitignore`する際は、パターン追加後に必ず
+7. サブディレクトリを`.gitignore`する際は、パターン追加後に必ず
    `git check-ignore -v <実際のファイルパス>`で効いているか確認すること
    (今回`dataset/**/*.png`が実際には無効だった教訓)
