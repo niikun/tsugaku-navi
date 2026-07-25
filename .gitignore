@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# 地図タイルキャッシュ(地理院タイルであっても、再生成可能なものは含めない。
+# 大量ダウンロード的な見た目を避けるため、最初から除外する設計にする)
+ml_risk_model/tile_cache/
+tile_cache/
+
+# 学習用画像データセット(タイル画像の合成物。容量が大きく、再生成可能)
+dataset/**/*.png
+dataset/**/*.jpg
+
+# OSM(またはOverpass API等、OSM本体を参照する外部API)由来のデータ全般は
+# deny-by-default でディレクトリごと除外する。ファイル名パターンでの許可制
+# ではなく「原則非公開、確認済みのものだけ個別に例外追加」という運用にする。
+# 理由: 旧プロジェクトでcell_features_500m.pklが「集計っぽい名前だが実は
+# 生ジオメトリ混在」だったことが監査で発覚し、命名規則に依存した除外は
+# 漏れるリスクがあると判断したため。
+# 詳細: ../traffic_accident/PLAN_GSI_MIGRATION.md フェーズ0.4、
+# ../traffic_accident/ml_risk_model/STUDY_LOG.md「OSMライセンス問題」参照
+ml_risk_model/osm_data/
+osm_data/
+*.osm.pbf
+
+# OSM本体・Overpass API等、外部の地理データAPIから個別要素(駅・信号・
+# 横断歩道等の個別座標)を取得してキャッシュしたファイル全般。
+# spatial_block_split.pyのstations_cache.json(Overpass API由来の駅個別
+# 座標)が、命名規則ベースの除外パターンでは捕捉されず監査で発覚したため、
+# 包括的なパターンに変更した(該当ファイル自体はリポジトリから削除済み)。
+*_cache.json
+
+# 学習済みモデルの重み(OSM版からは一切引き継がない。GSI版は再学習後に生成)
+ml_risk_model/models/*.pt
+*.pt
+
+# 秘密情報
+.env
+*.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# エディタ
+.vscode/
+.idea/
