@@ -1,8 +1,9 @@
 # 引き継ぎメモ
 
-## 現在地: フェーズ0・フェーズ1・フェーズ2の中核(CNN 3run学習・判定)完了。
-## GSI版CNNが旧OSM版CNNの精度を上回る結果(残差Spearman 0.484 vs 0.376)。
-## 23区視界特徴サブセット評価・企画書等の最終化が残作業
+## 現在地: フェーズ0・フェーズ1・フェーズ2の中核(CNN 3run学習・判定・
+## 推論エントリポイント risk_model.py)まで完了。GSI版CNNが旧OSM版CNNの
+## 精度を上回る結果(残差Spearman 0.484 vs 0.376)。渋谷駅での実地スモーク
+## テストも正常動作。23区視界特徴サブセット評価・企画書等の最終化が残作業
 
 背景・全体計画は `../traffic_accident/PLAN_GSI_MIGRATION.md` を参照
 (締切2026-08-23、残り約29日、バッファほぼゼロ)。発覚経緯の全記録は
@@ -282,13 +283,49 @@ train_v3_poisson.pyも同じ設計)。「3seed(42,1,2)」は3回の独立した�
 予測件数の較正(offsetの扱い、極端な低予測セルの有無)は今後要確認**。
 risk_model.py相当の推論コード移植時に必ず点検すること。
 
+- [x] **CNN予測値の較正異常(条件付き分散310.61)の原因調査、完了**: eval 896セル
+      中2セルだけで異常寄与の98.4%を占めていた(`500m_25096_7955`が84.7%、
+      `500m_25111_7953`が13.7%)。両方とも`vehicle_length_m=0.0`(OSM上で車道が
+      検出されないセル、曝露量オフセット=log(1)=0)で予測がほぼ0
+      (4e-6・1e-4)になる一方、実測は1件・2件と稀な事故があった。Pearson残差
+      `(y-mu)/√mu`はmu→0でy>0だと発散する数学的な性質のための現象であり、
+      パイプラインのバグではない(y=0のセルでmu→0なら残差自体も0に収束し発散
+      しない。発散するのはmuがほぼ0なのにyが非ゼロという稀な組み合わせのみ)。
+      順位ベースの主指標(残差Spearman)はこの種のスケール歪みに頑健なため
+      判定への影響はない。参考情報として記録: 車道長ゼロのセルに事故が
+      記録されるのは、事故地点がセル境界付近で隣接セルの道路に近い、または
+      OSM上「車道」に分類されないごく細い道路上の事故、等が考えられる
+      (要因の確定はしていない、優先度は低い)
+
+- [x] **risk_model.py相当の推論エントリポイント移植、完了**: `score_point`・
+      `score_route`・`get_point_facts`・`get_route_crossings`・
+      `get_narrow_road_segments`を移植。渋谷駅付近で実地スモークテスト済み
+      (`score_point`予測61.07件、`categorize`結果「危険」。同セルの実測事故数
+      66件[複数年累計]と近い妥当な水準。`route_crossings`5件検出、
+      marked_crossing/signal判定・narrow_road_segments検出も正常動作)。
+      `CATEGORY_THRESHOLDS`は旧リポジトリの値を使い回さず、
+      `risk_model.py --recompute-thresholds`でGSI版(std)train全域への
+      3runアンサンブル予測から実際に算出し直した(p20/p50/p80 =
+      0.125/2.568/5.860、旧v3版0.28/2.04/4.19・v4版0.44/3.78/7.57とは異なる)。
+      推論最適化(torch.jit.trace等)は旧リポジトリで行っていたが、まずは
+      正しさ優先でeagerモードのまま。速度が問題になったら追加すること。
+      **注意**: モデル読み込み時のパス(`_load_models`)はGRID_M/TILE_STYLE/
+      MODEL_SUFFIX/SEEDSの組み合わせから機械的に組み立てているので、
+      再学習して別名で保存した場合はこれらの定数を合わせて更新すること
+- [x] 事故CSVの実際の年数範囲を確認: 2018〜2024年(7年分)。旧リポジトリの
+      「4年(2021-2024)」「6年(2019-2024)」いずれとも異なる、より広い範囲
+      (旧リポジトリのtokyo_pedestrian_accidents.csvをそのまま複製したため)。
+      評価は全てこの同一データで一貫しているため比較上の問題はないが、
+      正確な年数範囲としてこの事実を記録しておく
+
 ### 未着手(フェーズ2の残り、フェーズ3へ)
 
-- [ ] CNN予測値の較正異常(条件付き分散310.61)の原因調査
 - [ ] 23区×PLATEAUサブセットでの視界特徴評価(`evaluate_subset_23ku.py`・
-      `evaluate_sightline_23ku.py`相当、後回しリスト参照)
-- [ ] risk_model.py相当の推論エントリポイント移植(road_index.py・
-      osm_feature_lookup.pyは既に用意済み)
+      `evaluate_sightline_23ku.py`相当、後回しリスト参照)。視界特徴データ
+      (`plateau/plateau_data/sightline_features_23ku.csv`)がこのリポジトリに
+      まだ無いため、`../traffic_accident/plateau/plateau_data/`からコピーする
+      か`plateau/compute_sightline_features.py`で作り直す必要がある
+      (PLATEAU由来でOSM非依存、コピー自体は問題ない)
 - [ ] フェーズ3: 本番反映・動作確認・企画書/提出物の最終化
 - [ ] 何か新しいファイルを旧プロジェクトからコピーする際は、**必ず
       `tile|fetch_tile|osmium|.pbf|overpass|stations_cache`を含めて
