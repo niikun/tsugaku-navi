@@ -1,7 +1,7 @@
 # 引き継ぎメモ
 
-## 現在地: フェーズ0完了。フェーズ1(データパイプライン本体)実装完了、
-## 全学習セル分の地理院タイル一括取得はこれから
+## 現在地: フェーズ0・フェーズ1完了(train全量タイル取得・回帰テスト済み)。
+## フェーズ2(CNN学習)着手直前。GPU利用可能を確認済み
 
 背景・全体計画は `../traffic_accident/PLAN_GSI_MIGRATION.md` を参照
 (締切2026-08-23、残り約29日、バッファほぼゼロ)。発覚経緯の全記録は
@@ -133,13 +133,25 @@
       とし、std/pale両対応にしてある(pale版は今回evalのみ生成、trainは
       当面生成しない)
 
-### 未着手(フェーズ1の残り)
-
-- [ ] **3.2 train全量(std)の地理院タイル取得**: 実行中(バックグラウンド、
-      3,803セル、約2.9時間見込み)。完了後、`osm_feature_lookup.py --style std`
-      で`osm_features/osm_features_{train,eval}_std.csv`を生成すること
-- [ ] **3.3 回帰テスト**: 画像サイズ・チャンネル数・前処理I/Oが旧パイプラインと
-      一致するか確認(train.py実行後に着手)
+- [x] **3.2 train全量(std)の地理院タイル取得完了**: 3,803セル全件取得、破損・
+      欠損なし。所要時間約2h55m(実測、レート制限0.5秒/枚を遵守)。
+      `augment_dataset.py --style std`実行(15,212件、生画像の4倍)、
+      `osm_feature_lookup.py --style std`実行(train 3,803件・eval 896件の
+      OSM特徴量CSVを`osm_features/`に生成・コミット可能)
+      - **バグ修正**: `osm_feature_lookup.py`が当初、拡張画像行(`_aug1`等)も
+        含めてOSM特徴量を紐付けており、train CSVが15,212行に膨張していた
+        (旧リポジトリは`source_cell_id==cell_id`で元画像のみに絞る設計だった)。
+        同じフィルタを追加し3,803行に修正
+- [x] **3.3 回帰テスト**: `evaluate_floor_osm.py --style std`を実行し、
+      フロア/OSM Poisson GBDT(画像を一切使わない、OSM特徴量のみのベースライン)
+      の残差Spearmanが旧OSM版(タイル画像のみ変更前)の実測値と近いことを確認。
+      **フロア自身=0.000(健全性チェック、定義通り)、OSM=0.201**
+      (旧OSM版の実測値0.211と近い、差0.010は誤差範囲)。OSM特徴量抽出
+      パイプライン(extract_osm_raw_cache.py→extract_osm_features.py→
+      osm_feature_lookup.py)・空間ブロック分割・セル列挙が旧リポジトリと
+      整合していることの強い傍証。周辺の分散/平均比は旧(train6.38/eval6.64)
+      よりやや高い(train11.61/eval9.10、事故データの年数範囲の違い等が
+      要因の可能性、CNN学習の障害にはならない)
 
 ### フェーズ2移植チェックリスト(2026-07-25、v4プロトコル一式の棚卸し)
 
@@ -233,20 +245,25 @@ tsugaku-navi-gsi/
 
 ## 次にやること(優先順)
 
-1. train全量(std、3,803セル)の取得完了を待つ(バックグラウンド実行中)
-2. `augment_dataset.py --style std` → `osm_feature_lookup.py --style std` の順で実行し、
-   拡張済みmanifestとOSM特徴量CSV(train/eval)を揃える
-3. `evaluate_floor_osm.py --style std`を実行し、フロア/OSMの残差Spearmanが
-   旧OSM版の実測値(フロア0.000・OSM0.211、全域)と大きく矛盾しないか確認する
-   (地理院タイル移行はタイル画像のみが変更対象で、OSM特徴量自体は変わらない
-   はずなので、大きく違えばパイプラインのバグを疑うこと)
-4. `uv add torch torchvision`してから`train.py --style std`(3seed: 42, 1, 2)を実行
-5. `evaluate_cnn.py --style std`で判定(3seed平均残差SpearmanがOSM版と比べて
-   極端な乖離がないか。乖離があればPLAN_GSI_MIGRATION §6.Aの診断順序に従う:
-   タイルスタイル→ズームレベル→情報量そのものの差、の順に切り分ける)
-6. 何か新しいファイルを旧プロジェクトからコピーする際は、**必ず
+1. `uv add torch torchvision`してから`train.py --style std`を3回実行する
+   (`--model-suffix`を`_poisson_seed42`/`_seed1`/`_seed2`等に変えて別ファイル名で
+   保存すること)。GPU(NVIDIA、CUDA 13.0)を確認済みなので現実的な時間で完了する
+   見込み。**注意**: `--seed`引数はtrain/val分割にのみ使われ、モデル重み初期化
+   はtorch未シード(旧リポジトリのtrain_v3_poisson.pyも同じ設計、torch.manual_seed
+   は呼ばれていない)。「3seed(42,1,2)」という呼称は3回の独立した学習run
+   というラベルであり、モデル初期化の再現可能な乱数シードではない
+   (旧リポジトリからの既知の制約、今回新たに直す必要はない)
+2. `evaluate_cnn.py --style std --model-glob "models/*_seed*_epoch15.pt"`で判定
+   (3seed平均残差SpearmanがOSM版と比べて極端な乖離がないか。乖離があれば
+   PLAN_GSI_MIGRATION §6.Aの診断順序に従う: タイルスタイル→ズームレベル→
+   情報量そのものの差、の順に切り分ける)
+3. `check_final_overdispersion.py --style std --cnn-model <代表チェックポイント>`で
+   フロア・OSM・CNNの条件付き過分散を最終確認
+4. 判定基準(事前登録済み、変更しない): 3seed平均残差Spearmanの差がseed間
+   標準偏差の2倍を超えるかで「フロアを上回る価値」を判定する
+5. 何か新しいファイルを旧プロジェクトからコピーする際は、**必ず
    `tile|fetch_tile|osmium|.pbf|overpass|stations_cache`を含めて
    grepチェックしてから**にすること(今回の監査での見落としを繰り返さない)
-7. サブディレクトリを`.gitignore`する際は、パターン追加後に必ず
+6. サブディレクトリを`.gitignore`する際は、パターン追加後に必ず
    `git check-ignore -v <実際のファイルパス>`で効いているか確認すること
    (今回`dataset/**/*.png`が実際には無効だった教訓)
