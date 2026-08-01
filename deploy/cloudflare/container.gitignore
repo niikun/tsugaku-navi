@@ -1,0 +1,21 @@
+# このディレクトリ(prepare_container.shの出力先)をGitHubへバックアップする場合の
+# .gitignore。ハッカソン特典の要件(支援期間終了後にサービスが止まるため事前の
+# GitHubバックアップが必須)への対応と、tsugaku-navi-gsiリポジトリ本体のOSM
+# ライセンス方針(README.md「OSMベクターデータ」節)の両立が目的。
+#
+# 重要: ml_risk_model/osm_data/ 配下(信号機・横断歩道の個別座標、車道wayの
+# 座標列を含む生キャッシュ)は、Dockerイメージには含める(Dockerfile参照、
+# `wrangler deploy`はgit経由ではないため問題ない)が、GitHubには絶対に
+# コミットしない。バックアップする場合もこのディレクトリだけは除外すること。
+
+__pycache__/
+*.pyc
+.env
+.venv/
+node_modules/
+.wrangler/
+tile_cache/
+ml_risk_model/tile_cache/
+ml_risk_model/osm_data/
+*.osm.pbf
+*_cache.json

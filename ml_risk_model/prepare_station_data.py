@@ -30,7 +30,7 @@ OUTPUT_PATH = os.path.join(BASE_DIR, "boundary_data", "N02-2022_Station_tokyo.ge
 
 SOURCE_URL = "https://nlftp.mlit.go.jp/ksj/gml/data/N02/N02-22/N02-22_GML.zip"
 ZIP_MEMBER = "UTF-8/N02-22_Station.geojson"
-USER_AGENT = "tsugaku-navi-gsi/1.0 (contact: niikun0209@gmail.com; educational hackathon project)"
+USER_AGENT = "tsugaku-navi/1.0 (contact: niikun0209@gmail.com; educational hackathon project)"
 
 # 東京本土のバウンディングボックス(南,西,北,東)。旧spatial_block_split.pyのTOKYO_BBOXと同じ。
 TOKYO_BBOX = (35.0, 138.9, 35.9, 140.0)

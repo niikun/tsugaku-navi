@@ -1,4 +1,4 @@
-# tsugaku-navi-gsi
+# tsugaku-navi
 
 歩行者事故リスクを地図タイル画像+CNNで推定するモデルの、地理院タイル移行版
 リポジトリ。地理院タイルを主な地図画像ソースとして構築した
@@ -23,11 +23,20 @@ OSM由来の
   必ず付す
 - レート制限: 0.5秒/枚(地理院タイルに明示的なレート制限の記載はないが、
   常識的な利用として踏襲)
-- User-Agent: `tsugaku-navi-gsi/1.0 (contact: niikun0209@gmail.com; ...)`
+- User-Agent: `tsugaku-navi/1.0 (contact: niikun0209@gmail.com; ...)`
   ([ml_risk_model/tiles.py](ml_risk_model/tiles.py)参照)
 - タイル画像は逐次取得のみ行い、事前バルクアーカイブ化は行わない
   (`tile_cache/`・学習用データセット`dataset/`・凍結評価セット`eval_frozen/`は
   再生成可能な成果物として`.gitignore`対象)
+
+### フロントエンド地図表示(OpenStreetMap標準タイル、`frontend/`)
+
+- `frontend/app.js`は、ユーザーが自宅・学校を指定してルート検索する画面の
+  地図表示にLeaflet経由でOSM標準タイルサーバー(`tile.openstreetmap.org`)を
+  使っている。通常のブラウザ経由の逐次リクエスト・帰属表示ありという、
+  OSM Tile Usage Policyが想定する一般的な利用形態にあたる。帰属表示
+  (`© OpenStreetMap contributors`)は`app.js`のタイルレイヤー定義内に
+  既に含まれている
 
 ### 警察庁交通事故統計情報オープンデータ
 

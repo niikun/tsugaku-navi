@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>あんしんつうがくナビ</title>
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-01RBM9X5H6"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-01RBM9X5H6');
+    </script>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+    <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+    <div id="map"></div>
+
+    <!-- PC版だけで使うサイドパネル全体の開閉ボタン(モバイルはCSSでdisplay:none)。
+         #sidebar自身の外に置くことで、たたんだ状態でも常にクリックできるようにする。 -->
+    <button id="sidebar-toggle-btn" aria-label="パネルの開閉" aria-expanded="true">‹</button>
+
+    <!-- PC(min-width:769px)では#sidebarが左側の固定パネルとしてheader/controls/info-panelを
+         まとめる(検索欄・AIコメントを地図から分離し、絶対配置どうしの重なりバグを構造的に防ぐ)。
+         スマホでは#sidebarはdisplay:contentsで消え、中身は元どおり個別のfloating-panelとして
+         上から積み重なる(従来のモバイルレイアウトのまま)。 -->
+    <div id="sidebar">
+        <header class="floating-panel">
+            <h1>🏡 つうがくナビ</h1>
+            <div class="subtitle">あんぜんなつうがくろをみつけよう！</div>
+        </header>
+
+        <div id="controls" class="floating-panel">
+            <div id="controls-top-row">
+                <button id="controls-toggle-btn" class="mode-btn active" aria-label="メニューの開閉" aria-expanded="true">☰</button>
+                <button id="search-toggle-btn" class="mode-btn" aria-label="住所検索">🔍</button>
+                <div id="controls-buttons">
+                    <button id="home-mode-btn" class="mode-btn">🏡 おうちをきめる</button>
+                    <button id="school-mode-btn" class="mode-btn">🏫 がっこうをきめる</button>
+                    <button id="reset-btn">🔄 リセット</button>
+                    <select id="route-mode">
+                        <option value="foot">🚶 歩道優先</option>
+                        <option value="driving">📏 最短距離</option>
+                    </select>
+                </div>
+            </div>
+            <div id="search-bar" hidden>
+                <input id="search-input" type="text" placeholder="住所・学校名（例: 新宿区立〇〇小学校）" autocomplete="off" />
+                <button id="search-btn">検索</button>
+            </div>
+        </div>
+
+        <div id="info-panel" class="floating-panel">
+            <button id="info-panel-toggle" aria-label="パネルをたたむ/ひろげる" aria-expanded="true">︿</button>
+            <div id="info-panel-content">
+                <div id="pin-status" class="status-text">まず「おうちをきめる」ボタンをおしてね</div>
+                <div id="route-detour-hint" class="detour-hint" hidden></div>
+                <div id="result-area"></div>
+                <button id="ai-ask-btn" disabled>🤖 AIにきいてみる</button>
+                <div id="ai-legend" hidden>
+                    <span class="legend-heat-bar legend-heat-bar-ai"></span>
+                    <span>AIがよそくしたきけんど（あんぜん→きけん）</span>
+                    <span><i class="legend-dot legend-dot-accident"></i>じこがおきたばしょ</span>
+                    <span><i class="legend-dot legend-dot-crossing-signal"></i>信号のある横断歩道</span>
+                    <span><i class="legend-dot legend-dot-crossing-marked"></i>信号のない横断歩道</span>
+                    <span><i class="legend-dot legend-dot-crossing-unmarked"></i>横断歩道のないところ</span>
+                    <span>🔍 マーカーをタップすると、くわしい理由が見えるよ</span>
+                </div>
+                <div id="ai-answer-area"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="map-legend" class="floating-panel">
+        <span class="legend-heat-bar legend-heat-bar-history"></span>
+        <span>じこのおおさ（すくない→おおい）</span>
+        <span class="map-legend-hint">ズームすると1件ずつ見られるよ</span>
+    </div>
+
+    <footer class="floating-panel">
+        <div class="data-source">
+            データ出典: <a href="https://www.npa.go.jp/publications/statistics/koutsuu/opendata/index_opendata.html" target="_blank" rel="noopener noreferrer">警察庁交通事故統計情報オープンデータ</a>（2019年1月～2024年12月）
+        </div>
+    </footer>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.min.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
