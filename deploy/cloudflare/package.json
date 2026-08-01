@@ -1,0 +1,17 @@
+{
+  "name": "tsugaku-navi-backend-worker",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "types": "wrangler types",
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev"
+  },
+  "dependencies": {
+    "@cloudflare/containers": "^0.3.7"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "wrangler": "^4.114.0"
+  }
+}

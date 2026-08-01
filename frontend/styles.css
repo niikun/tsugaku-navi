@@ -1,0 +1,816 @@
+/* あんしんつうがくナビ - スタイルシート(クリーンなSaaS系デザイン) */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --color-bg: #F7F8FA;
+    --color-white: #FFFFFF;
+    --color-surface: #FFFFFF;
+    --color-border: #E4E7EC;
+    --color-border-strong: #D0D5DD;
+    --color-text: #1D2433;
+    --color-text-muted: #667085;
+    --color-text-faint: #98A2B3;
+    --color-accent: #3B5BDB;
+    --color-accent-hover: #33509E;
+    --color-accent-soft: #EEF1FD;
+    --color-warning: #D64545;
+    --color-warning-soft: #FDEEEE;
+    --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
+    --shadow-md: 0 2px 6px rgba(16, 24, 40, 0.08), 0 1px 2px rgba(16, 24, 40, 0.06);
+    --shadow-lg: 0 8px 24px rgba(16, 24, 40, 0.12), 0 2px 6px rgba(16, 24, 40, 0.06);
+    --radius: 10px;
+    --radius-sm: 7px;
+}
+
+html, body {
+    height: 100%;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Segoe UI', 'Meiryo', sans-serif;
+    height: 100dvh;
+    height: 100vh; /* fallback */
+    position: relative;
+    overflow: hidden;
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    -webkit-font-smoothing: antialiased;
+}
+
+/* #sidebarは既定(モバイル)ではdisplay:contentsでレイアウトに関与しない
+   (中身のheader/#controls/#info-panelは従来どおりbody直下のfloating-panelとして
+   絶対配置で積み重なる)。PC版だけ、下の@media(min-width:769px)で実体化させ、
+   左側の固定サイドパネルに変える。 */
+#sidebar {
+    display: contents;
+}
+
+/* サイドパネル全体の開閉ボタン。PC版でのみ使う機能なので既定では隠す
+   (モバイルは#sidebarがdisplay:contentsで実体を持たず、たたむ対象がないため)。 */
+#sidebar-toggle-btn {
+    display: none;
+}
+
+/* 地図を画面いっぱいの土台にし、それ以外のUIはすべて地図の上に浮かせる
+   フローティングカード方式にする(地図を主役にするため)。 */
+.floating-panel {
+    position: absolute;
+    z-index: 1000;
+    background-color: rgba(255, 255, 255, 0.97);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--color-border);
+}
+
+header {
+    top: 14px;
+    left: 14px;
+    max-width: min(78vw, 340px);
+    padding: 12px 16px;
+}
+
+h1 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-text);
+    margin-bottom: 1px;
+    letter-spacing: 0.1px;
+}
+
+.subtitle {
+    font-size: 0.72rem;
+    color: var(--color-text-muted);
+    font-weight: 400;
+}
+
+/* 検索欄(#search-bar)を独立したfloating-panelとして#controlsの下に絶対配置して
+   いたところ、#controls-buttonsが2行に折り返る幅では検索欄の上に重なり、
+   検索ボタンのクリックを奪ってしまう不具合があった(固定top値で回避しようとしても
+   折り返り行数はビューポート幅次第で変わるため根本解決にならない)。
+   #search-barを#controls内の1行として統合し、同じフローの中で縦に積むことで
+   物理的に重なりが起きない構造にした。 */
+#controls {
+    top: 14px;
+    right: 14px;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-width: min(90vw, 420px);
+}
+
+#controls-top-row {
+    display: flex;
+    gap: 6px;
+    align-items: flex-start;
+}
+
+#controls-toggle-btn {
+    flex-shrink: 0;
+    padding: 8px 11px;
+}
+
+#controls-buttons {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+    flex: 1;
+}
+
+#controls-buttons[hidden] {
+    display: none;
+}
+
+button {
+    padding: 8px 16px;
+    background-color: var(--color-white);
+    color: var(--color-text);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 0.84rem;
+    font-weight: 500;
+    font-family: inherit;
+    transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    letter-spacing: 0.1px;
+    white-space: nowrap;
+}
+
+button:hover {
+    background-color: var(--color-bg);
+    border-color: var(--color-text-faint);
+}
+
+button:active {
+    background-color: var(--color-border);
+}
+
+#reset-btn {
+    background-color: var(--color-white);
+    border-color: var(--color-border-strong);
+    color: var(--color-text-muted);
+    margin-left: auto;
+}
+
+#reset-btn:hover {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+}
+
+#route-mode {
+    padding: 8px 9px;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--color-white);
+    color: var(--color-text);
+    font-size: 0.8rem;
+    font-family: inherit;
+    cursor: pointer;
+    outline: none;
+    flex-shrink: 0;
+}
+
+.mode-btn {
+    color: var(--color-text-muted);
+    border-color: var(--color-border-strong);
+}
+
+.mode-btn.active {
+    background-color: var(--color-accent);
+    border-color: var(--color-accent);
+    color: var(--color-white);
+    box-shadow: 0 2px 8px rgba(59, 91, 219, 0.28);
+}
+
+.mode-btn.active:hover {
+    background-color: var(--color-accent-hover);
+    border-color: var(--color-accent-hover);
+}
+
+#map {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--color-border);
+}
+
+/* Leafletのdivicon既定スタイル(白背景+枠線)を消す。素のdivをそのまま描くため。 */
+.custom-marker-icon,
+.square-marker-icon {
+    background: transparent;
+    border: none;
+}
+
+#map-legend {
+    left: 14px;
+    bottom: 14px;
+    padding: 7px 12px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 0.7rem;
+    color: var(--color-text-muted);
+    max-width: min(60vw, 260px);
+}
+
+.map-legend-hint {
+    color: var(--color-text-faint);
+}
+
+#info-panel {
+    left: 50%;
+    bottom: 14px;
+    transform: translateX(-50%);
+    width: min(92vw, 560px);
+    padding: 10px 18px 14px;
+    text-align: center;
+    max-height: 38vh;
+    overflow: visible;
+}
+
+#info-panel-content {
+    max-height: calc(38vh - 26px);
+    overflow-y: auto;
+}
+
+#info-panel.collapsed #info-panel-content {
+    display: none;
+}
+
+/* パネル上端中央に、たたむ/ひろげるハンドル。地図をふさぐ問題への対処。 */
+#info-panel-toggle {
+    display: block;
+    margin: -2px auto 6px;
+    padding: 2px 18px;
+    font-size: 0.75rem;
+    line-height: 1;
+    color: var(--color-text-faint);
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    cursor: pointer;
+}
+
+#info-panel-toggle:hover {
+    color: var(--color-text-muted);
+    background: transparent;
+}
+
+.status-text {
+    color: var(--color-text-muted);
+    font-size: 0.82rem;
+    margin-bottom: 6px;
+    font-weight: 400;
+}
+
+/* ルートが直線距離に対してかなり遠回りな場合のヒント。OSRM公開ルーターの
+   歩行者プロファイルは、細街路が入り組んだ地域で実際より遠回りな経路を
+   返すことがある(ルーティング自体は直せないので、目安の注意書きだけ出す)。 */
+.detour-hint {
+    color: #9A6B00;
+    background-color: #FFF6E5;
+    border: 1px solid #F0DBA6;
+    font-size: 0.8rem;
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    margin-bottom: 6px;
+}
+
+.detour-hint[hidden] {
+    display: none;
+}
+
+.result-text {
+    color: var(--color-text);
+    font-size: 0.95rem;
+    font-weight: 500;
+    background-color: var(--color-accent-soft);
+    padding: 10px 16px;
+    border-radius: var(--radius-sm);
+    display: inline-block;
+    border: 1px solid var(--color-border);
+    line-height: 1.6;
+}
+
+.warning-text {
+    color: var(--color-warning);
+    background-color: var(--color-warning-soft);
+    border-color: #F5CFCF;
+}
+
+footer {
+    right: 14px;
+    bottom: 14px;
+    padding: 5px 11px;
+    text-align: center;
+}
+
+.data-source {
+    font-size: 0.66rem;
+    color: var(--color-text-faint);
+}
+
+.data-source a {
+    color: var(--color-text-muted);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.15s ease;
+}
+
+.data-source a:hover {
+    border-bottom-color: var(--color-text-muted);
+}
+
+/* 住所検索バー(#controls内の1行。独立したfloating-panelではない) */
+#search-bar {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    animation: slideDown 0.15s ease;
+}
+
+#search-bar[hidden] {
+    display: none;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+#search-toggle-btn {
+    flex-shrink: 0;
+    flex: 0 0 auto;
+    padding: 8px 11px;
+}
+
+#search-input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-sm);
+    font-size: 0.82rem;
+    font-family: inherit;
+    background: var(--color-white);
+    color: var(--color-text);
+    outline: none;
+    transition: border-color 0.15s;
+}
+
+#search-input:focus {
+    border-color: var(--color-accent);
+}
+
+#search-input::placeholder {
+    color: var(--color-text-faint);
+    font-size: 0.76rem;
+}
+
+#search-btn {
+    padding: 8px 14px;
+    background: var(--color-accent);
+    color: white;
+    border: 1px solid var(--color-accent);
+    border-radius: var(--radius-sm);
+    font-size: 0.82rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+#search-btn:hover {
+    background: var(--color-accent-hover);
+    border-color: var(--color-accent-hover);
+}
+
+#search-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* AIあんぜんせんせい */
+#ai-ask-btn {
+    display: none;
+    margin-top: 8px;
+    background-color: var(--color-accent);
+    border-color: var(--color-accent);
+    color: var(--color-white);
+    font-weight: 600;
+}
+
+#ai-ask-btn:not(:disabled) {
+    display: inline-block;
+}
+
+#ai-ask-btn:hover:not(:disabled) {
+    background-color: var(--color-accent-hover);
+    border-color: var(--color-accent-hover);
+}
+
+#ai-ask-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+#ai-legend {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 8px;
+    font-size: 0.74rem;
+    color: var(--color-text-muted);
+}
+
+#ai-legend[hidden] {
+    display: none;
+}
+
+.legend-dot {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    margin-right: 4px;
+    vertical-align: middle;
+}
+
+.legend-dot-accident { background-color: #e74c3c; border: 1.5px solid #c0392b; }
+.legend-dot-crossing-signal { background-color: #0E9F8E; border: 1.5px solid #FFFFFF; }
+.legend-dot-crossing-marked { background-color: #F0A020; border: 1.5px solid #FFFFFF; }
+.legend-dot-crossing-unmarked { background-color: #D6249F; border: 1.5px solid #FFFFFF; }
+
+.legend-heat-bar {
+    display: inline-block;
+    width: 56px;
+    height: 8px;
+    border-radius: 4px;
+    margin-right: 4px;
+    vertical-align: middle;
+}
+
+.legend-heat-bar-ai {
+    background: linear-gradient(to right, #34A853, #FBBC04, #EA8600, #D64545);
+}
+
+.legend-heat-bar-history {
+    background: linear-gradient(to right, #3B5BDB, #8E44AD, #EA8600, #D64545);
+}
+
+#ai-answer-area {
+    margin-top: 10px;
+}
+
+/* AIのいちばんのおすすめ地点(事実情報マーカー)を点滅させて目を引く。
+   Leafletのcircle MarkerはSVG pathとして描画されるため、opacityとstroke幅の
+   アニメーションで「呼吸するような」点滅にする(点滅より視認性がよい)。 */
+.ai-facts-marker-pulse {
+    animation: ai-facts-pulse 1.4s ease-in-out infinite;
+    transform-origin: center;
+    transform-box: fill-box;
+}
+
+@keyframes ai-facts-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.55; transform: scale(1.35); }
+}
+
+.ai-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 18px;
+    color: var(--color-text-muted);
+    font-size: 0.82rem;
+}
+
+.ai-spinner {
+    width: 26px;
+    height: 26px;
+    border: 3px solid var(--color-border);
+    border-top-color: var(--color-accent);
+    border-radius: 50%;
+    animation: ai-spin 0.8s linear infinite;
+}
+
+@keyframes ai-spin {
+    to { transform: rotate(360deg); }
+}
+
+.ai-answer-text {
+    color: var(--color-text);
+    font-size: 0.88rem;
+    background-color: var(--color-bg); /* #info-panel自体がほぼ不透明(rgba(255,255,255,0.97))なので
+        ここを半透明にしても地図は透けず、白っぽい二重表示で読みにくいだけだった。不透明に戻す */
+    padding: 12px 16px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
+    text-align: left;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    max-width: 640px;
+    max-height: 22vh;
+    overflow-y: auto;
+    margin: 8px auto 0;
+}
+
+.ai-answer-error {
+    color: var(--color-warning);
+}
+
+/* 地図上のフローティング吹き出し(事実情報ポップアップ)もカードのトーンに揃える */
+.leaflet-popup-content-wrapper {
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-md);
+}
+
+.leaflet-popup-content {
+    font-size: 0.82rem;
+    line-height: 1.6;
+    color: var(--color-text);
+}
+
+/* Leaflet Routing MachineのUIパネルを非表示 */
+.leaflet-routing-container {
+    display: none !important;
+}
+
+/* ズームボタン(右下)がfooterのデータ出典表記と重ならないよう上にずらす */
+.leaflet-bottom.leaflet-right {
+    margin-bottom: 32px;
+}
+
+/* ===== モバイル ===== */
+/* フローティングパネルは横に並べるとぶつかるため、上から
+   header→controls→search-barの順に縦積みする1本の帯に変える。 */
+@media (max-width: 768px) {
+    header {
+        top: 8px;
+        left: 8px;
+        right: 8px;
+        max-width: none;
+        padding: 8px 14px;
+    }
+
+    h1 {
+        font-size: 0.95rem;
+        margin-bottom: 0;
+    }
+
+    .subtitle {
+        display: none;
+    }
+
+    #controls {
+        top: 54px;
+        left: 8px;
+        right: 8px;
+        max-width: none;
+        padding: 7px;
+        gap: 6px;
+    }
+
+    /* 画面が狭いので常時表示の凡例は隠し、地図とパネルを優先する */
+    #map-legend {
+        display: none;
+    }
+
+    footer {
+        display: none;
+    }
+
+    #controls-buttons {
+        gap: 6px;
+    }
+
+    #search-toggle-btn {
+        flex: 0 0 auto;
+        padding: 7px 11px;
+    }
+
+    #home-mode-btn,
+    #school-mode-btn {
+        flex: 1 1 calc(50% - 4px);
+        padding: 8px 6px;
+        font-size: 0.76rem;
+    }
+
+    #reset-btn {
+        flex: 1;
+        margin-left: 0;
+        padding: 8px 6px;
+        font-size: 0.76rem;
+    }
+
+    #route-mode {
+        font-size: 0.72rem;
+        padding: 7px 6px;
+        flex: 1;
+    }
+
+    #info-panel {
+        left: 8px;
+        right: 8px;
+        bottom: 8px;
+        transform: none;
+        width: auto;
+        padding: 8px 12px;
+    }
+
+    .status-text {
+        font-size: 0.74rem;
+        margin-bottom: 4px;
+    }
+
+    .result-text {
+        font-size: 0.82rem;
+        padding: 8px 12px;
+        display: block;
+        text-align: left;
+    }
+
+    #ai-ask-btn {
+        width: 100%;
+        padding: 11px 8px;
+        font-size: 0.82rem;
+    }
+
+    #ai-legend {
+        gap: 5px 10px;
+        font-size: 0.68rem;
+        margin-top: 6px;
+    }
+
+    .ai-answer-text {
+        font-size: 0.82rem;
+        padding: 10px 12px;
+        max-height: 18vh;
+    }
+}
+
+/* ===== PC(サイドパネル) ===== */
+/* 検索欄・AIコメントを含むheader/#controls/#info-panelを、地図の上に浮かせるのを
+   やめて左側の固定幅パネルにまとめる。個別のfloating-panelが絶対配置で重なる
+   バグ(検索ボタンが#controls-buttonsの折り返しに埋もれた件)を構造的に防ぐため。 */
+@media (min-width: 769px) {
+    :root {
+        --sidebar-width: 380px;
+    }
+
+    #sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: var(--sidebar-width);
+        padding: 20px;
+        overflow-y: auto;
+        background-color: rgba(255, 255, 255, 0.97);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border-right: 1px solid var(--color-border);
+        box-shadow: var(--shadow-lg);
+        z-index: 1000;
+    }
+
+    #sidebar header,
+    #sidebar #controls,
+    #sidebar #info-panel {
+        position: static;
+        width: auto;
+        max-width: none;
+        transform: none;
+        background: transparent;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        box-shadow: none;
+        border: none;
+        border-radius: 0;
+        padding: 0;
+    }
+
+    #sidebar #controls {
+        padding-top: 16px;
+        border-top: 1px solid var(--color-border);
+    }
+
+    /* #controls-buttons(家/学校/リセット/経路選択)は、横幅の狭いサイドパネルでは
+       元のflex-wrapのままだと折り返し位置が不揃いでガタガタに見える。
+       家・学校ボタンは全幅で縦に積み、リセット・経路選択はその下に横並びにする
+       2列グリッドに変える(表示順は変えず、grid-column:1/-1で全幅行にする)。 */
+    #sidebar #controls-buttons {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+
+    #sidebar #home-mode-btn,
+    #sidebar #school-mode-btn {
+        grid-column: 1 / -1;
+    }
+
+    #sidebar #reset-btn {
+        margin-left: 0;
+    }
+
+    #sidebar #controls-top-row {
+        gap: 8px;
+    }
+
+    #sidebar #info-panel {
+        padding-top: 16px;
+        border-top: 1px solid var(--color-border);
+        text-align: left;
+        max-height: none;
+        overflow: visible;
+    }
+
+    #sidebar #info-panel-content {
+        max-height: none;
+        overflow-y: visible;
+    }
+
+    #sidebar #info-panel-toggle {
+        margin: -2px auto 6px 0;
+    }
+
+    #sidebar .result-text {
+        display: block;
+    }
+
+    #map {
+        /* 基本ルールのwidth:100%と、ここで指定するleftが両立(過剰制約)すると
+           rightが無視されてはみ出す(実測で確認済み)。widthをautoに戻し、
+           left+right(inset:0由来)から幅を計算させる。 */
+        left: var(--sidebar-width);
+        width: auto;
+        transition: left 0.2s ease;
+    }
+
+    #map-legend {
+        left: calc(var(--sidebar-width) + 14px);
+        transition: left 0.2s ease;
+    }
+
+    #sidebar {
+        transition: transform 0.2s ease;
+    }
+
+    /* サイドパネル脇に貼り付く、常時クリック可能なタブ状の開閉ボタン。
+       たたんだ状態でもleftを0側に動かして追随させる(#sidebarの外にあるので
+       transform:translateXの影響を受けない)。 */
+    #sidebar-toggle-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: fixed;
+        top: 50%;
+        left: var(--sidebar-width);
+        transform: translate(-1px, -50%);
+        width: 22px;
+        height: 52px;
+        padding: 0;
+        border-radius: 0 8px 8px 0;
+        background-color: rgba(255, 255, 255, 0.97);
+        border: 1px solid var(--color-border);
+        border-left: none;
+        box-shadow: var(--shadow-md);
+        color: var(--color-text-muted);
+        font-size: 0.85rem;
+        z-index: 1001;
+        transition: left 0.2s ease;
+    }
+
+    #sidebar-toggle-btn:hover {
+        color: var(--color-text);
+        background-color: var(--color-bg);
+    }
+
+    body.sidebar-collapsed #sidebar {
+        transform: translateX(-100%);
+    }
+
+    body.sidebar-collapsed #sidebar-toggle-btn {
+        left: 0;
+    }
+
+    body.sidebar-collapsed #map {
+        left: 0;
+    }
+
+    body.sidebar-collapsed #map-legend {
+        left: 14px;
+    }
+}

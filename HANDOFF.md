@@ -1,9 +1,12 @@
 # 引き継ぎメモ
 
-## 現在地: フェーズ0・フェーズ1・フェーズ2完了。pale版CNN(本番用全量
-## データ、3run)を採用し、risk_model.pyを差し替え済み。23区視界特徴評価も
-## GSI版パイプライン単体でやり直し完了(追加価値なしと確認)。動作確認
-## 3ケース(23区内・多摩・境界またぎ)合格。残作業はデプロイ移行・企画書最終化
+## 現在地(2026-07-26時点): フェーズ0〜3のコア部分完了。pale版CNN
+## (本番用全量データ、3run)を採用しrisk_model.pyを差し替え済み。
+## Cloudflare Containersへの本番デプロイも完了・稼働確認済み
+## (`https://tsugaku-navi-backend.tokyo-odh-097.workers.dev`)。
+## フロントエンド(`frontend/`)もこのリポジトリに統合済み。
+## 残作業はS3への手動アップロード確認・GitHubバックアップ・企画書最終化のみ
+## (詳細は本ファイル末尾「次にやること」参照)
 
 **重要な訂正の記録(2026-07-25)**: 当初「GSI版std CNN(0.484)が旧OSM版
 (0.376)を上回った」と報告したが、これは評価セットのセル集合・事故ラベルの
@@ -52,7 +55,7 @@ GSI版stdは旧OSM版に統計的に確定的に劣ることが判明(bootstrap 
       駅名等の巨大ラベルは駅近接セルのみの局所的な問題、住宅地では道路階層の
       視覚的区別も十分機能することを確認済み
 - [x] **2.2 利用規約の反映方法**: 出典表示文言・レート制限(0.5秒/枚)・
-      User-Agent(`tsugaku-navi-gsi/1.0 (contact: niikun0209@gmail.com; ...)`)
+      User-Agent(`tsugaku-navi/1.0 (contact: niikun0209@gmail.com; ...)`)
       を確定
 - [x] **2.3 新リポジトリ雛形**: `.gitignore`作成、新規`ml_risk_model/tiles.py`
       (地理院タイルstd版)を実装・動作確認済み(実際にタイル取得→256x256の
@@ -255,7 +258,7 @@ GSI版で置き換える。
 ## 現在のディレクトリ構成
 
 ```
-tsugaku-navi-gsi/
+tsugaku-navi/
 ├── .gitignore                          # deny-by-default設計(dataset/eval_frozenバグ修正済み)
 ├── README.md                           # データ出典・帰属表示・OSMデータ公開ルール(2.4)
 ├── HANDOFF.md                          # このファイル
@@ -360,6 +363,13 @@ risk_model.py相当の推論コード移植時に必ず点検すること。
       (旧リポジトリのtokyo_pedestrian_accidents.csvをそのまま複製したため)。
       評価は全てこの同一データで一貫しているため比較上の問題はないが、
       正確な年数範囲としてこの事実を記録しておく
+      - **訂正(2026-08-01)**: 「7年分」は不正確だった。年別件数を確認したところ
+        2018年は123件のみ(うち76件が12月、残りも数件ずつ点在する紛れ込みに
+        近い状態)で、2019〜2024年の各年は4,300〜5,200件台。実質的な収録期間は
+        **2019年1月〜2024年12月の6年分**とするのが正確(件数29,284件自体は
+        正しい)。学習・評価は全期間を同一に使っているためモデルの精度検証
+        結果に影響はないが、企画書等で「7年分」と表記しないよう注意
+        (`HACKATHON_PROPOSAL.md`は修正済み)
 
 ### 完了(続き、2026-07-25・訂正〜pale採用〜フェーズ3反映)
 
@@ -446,9 +456,89 @@ risk_model.py相当の推論コード移植時に必ず点検すること。
 - [ ] 技術検証を打ち止めとするかはユーザー確認待ち(2026-07-26時点)。
       詳細な検証過程・数値は全て`STUDY_LOG.md`に記録済み
 
+### デプロイ移行(2026-07-26、着手)
+
+**背景・重要な発見**: 現行本番バックエンド(`../tsugaku-navi-backend-space`、
+HuggingFace Spaces)は実は**旧OSM版モデルのまま**で、かつOSMライセンス対応の
+ため生ジオメトリキャッシュ(`osm_data/osm_raw_cache_500m.pkl`・
+`vehicle_roads_tokyo.parquet`)を同梱できず、`get_point_facts`の一部・
+`route_crossings`・`route_narrow_road_segments`が**動作していなかった**
+(`prepare_space.sh`のコメントに明記)。デプロイ移行の目的は単なるホスティング
+先変更ではなく、GSI版pale本番モデルへの差し替えとこの機能欠落の解消を兼ねる。
+
+移行先はCloudflare Containers(Code for Japan「オープンデータハッカソン2026」の
+Cloudflare特典、Workers Paid相当を2026年9月末まで無償提供、要事前申請)。
+HuggingFace SpacesのDocker SDKはPRO以上の有料プラン($9/月〜)必須なのに対し、
+Workers Paidは$5/月〜(特典適用中は無償)でコスト削減にもなる。
+
+**発見した設計上のポイント**: `wrangler deploy`はDockerイメージをローカルで
+ビルド・プッシュするだけでgit commitを経由しない。そのためHF Spaces(gitpush
+必須、ライセンス上コミットできない生OSMキャッシュを同梱できなかった)とは異なり、
+`ml_risk_model/osm_data/`(常にgitignore対象)の内容もDockerfileでCOPYして
+構わない。「git管理下に置かない」と「Dockerイメージに含める」は別の制約。
+
+**完了(コード・設定一式、`deploy/cloudflare/`)**:
+- [x] `prepare_container.sh` — GSI版pale本番3run・OSM集計/生キャッシュ・
+      視界特徴CSV・backend/(lambda_handler.py等、tsugaku-navi-backend-spaceの
+      現行版を流用、タイル取得元と無関係なため変更なし)を組み立て、
+      `../tsugaku-navi-cloudflare`に出力する。実行・動作確認済み(143MB)
+- [x] `Dockerfile` — 旧HF Spaces版から流用、`ml_risk_model/osm_data/`のCOPYを
+      追加。ポートは8080(Cloudflare Containersの慣例に合わせた、旧版は7860)
+- [x] `server.py`(旧`hf_server.py`をリネーム、ロジック不変)
+- [x] `wrangler.jsonc`・`src/index.ts`(Durable Object経由でコンテナに
+      ルーティングするWorker、シングルトンパターン`getContainer(env.BACKEND)`)・
+      `package.json`・`tsconfig.json`・`src/env.d.ts`(Secretsの型宣言)
+- [x] `container.gitignore`(出力先の`.gitignore`になる。`osm_data/`除外を
+      継承。ハッカソン特典終了後の必須GitHubバックアップ時にも安全)
+- [x] 型チェック(`tsc --noEmit`)・`wrangler deploy --dry-run`(Workerの
+      バンドルは成功、Docker CLI不在のためコンテナビルドのみ未検証)で
+      設定の妥当性を確認済み
+- [x] `risk_model.py`・`accident_data.py`・`lambda_handler.py`の実際の
+      importが組み立て後のディレクトリで通ることを確認(パス解決含む)
+
+**ユーザーの残作業(このセッションの開発機にはDocker・ブラウザが無く実行不可)**:
+- [ ] ハッカソン特典の申請(Googleフォーム→事務局登録→招待メール→
+      チーム切り替え、Cloudflareアカウント作成は済み)
+- [ ] Dockerが使える環境で: `cd ../tsugaku-navi-cloudflare && npm install &&
+      npx wrangler login && npx wrangler secret put ANTHROPIC_API_KEY &&
+      npx wrangler deploy`(詳細は`deploy/cloudflare/README_DEPLOY.md`)
+- [x] 本番デプロイ実行(2026-07-26)。Dockerグループ権限・buildxプラグイン
+      未導入・`instance_type`未指定(既定`lite`=256MiBがtorch推論に対して
+      メモリ不足でクラッシュ)の3点を解決し、
+      `https://tsugaku-navi-backend.tokyo-odh-097.workers.dev`で稼働確認。
+      `/score`・`/ask`(MODELをclaude-opus-4-8→claude-sonnet-5に変更、
+      コスト削減目的)とも動作確認済み。`route_crossings`・
+      `narrow_road_segments`・`sightline`(23区)も正しく返っており、
+      旧HF Spaces版で欠けていた機能が復旧したことを確認
+- [x] フロントエンド(`app.js`)の呼び出し先URLを新エンドポイントに更新。
+      S3へのアップロードはAWS CLI認証情報がこの開発機に無いため、
+      4ファイル(index.html/styles.css/app.js/accidents.geojson)を
+      まとめてConsoleから手動アップロードする方式で対応
+- [x] **フロントエンド一式(`frontend/`)をこのリポジトリに統合(2026-07-26)**:
+      `traffic_accident`から`index.html`・`styles.css`・`app.js`・
+      `accidents.geojson`・`deploy.sh`・`deploy-nocache.sh`・
+      `invalidate-cloudfront.sh`・`DEPLOYMENT.md`を移設。移設前にOSM関連
+      キーワード監査(`tile|fetch_tile|osmium|.pbf|overpass|stations_cache`)を
+      実施し、`app.js`がヒットしたが中身はLeaflet地図表示用のOSM標準タイル
+      (`tile.openstreetmap.org`)への通常のブラウザ経由リクエストであり、
+      CNN学習パイプラインが問題視していた「タイルの大量ダウンロード・
+      アーカイブ化」とは別物(帰属表示も既にコード内にあり)と確認した上で
+      移設。詳細はREADME.md「フロントエンド地図表示」節に記録
+- [x] `frontend/`のUI微修正(2026-07-26): 事故マーカーが「じこがおきたばしょ」
+      (赤、全域常時表示レイヤー)と「じっさいの事故」(青、AI検索結果レイヤー)の
+      2色に分かれていたが、同じ「事故があった場所」を指すだけで色を分ける
+      意味が無かった(ユーザー指摘)。`app.js`のAI結果側マーカーを赤に統一し
+      ラベルも「じこがおきたばしょ」に統一(`index.html`の凡例・`styles.css`の
+      凡例ドット色も合わせて修正)。あわせて実態と合わなくなっていた古い
+      コメント(「AI側は個別マーカー描画をやめた」)も削除
+- [ ] 特典期間終了(2026-09-30予定)前に`tsugaku-navi-cloudflare`(デプロイ
+      バンドル)をGitHubへバックアップ(`.gitignore`で`osm_data/`除外済み、
+      要`git status`確認)。あわせてこのリポジトリ自体(`frontend/`統合後)の
+      コミットも検討する
+- [ ] 動作確認3ケースをデプロイ後のエンドポイントに対して再実施
+
 ### 未着手(フェーズ3の残り)
 
-- [ ] デプロイ移行(Cloudflare、以前確保した特典の活用)
 - [ ] 企画書・ピッチ資料の最終化(旧OSM版への言及がないことを確認)
 - [ ] PLAN_GSI_MIGRATION.md(旧repo)の編集をコミットするか判断
       (現状このリポジトリの操作からは未コミットのまま)
@@ -458,3 +548,27 @@ risk_model.py相当の推論コード移植時に必ず点検すること。
 - [ ] サブディレクトリを`.gitignore`する際は、パターン追加後に必ず
       `git check-ignore -v <実際のファイルパス>`で効いているか確認すること
       (今回`dataset/**/*.png`が実際には無効だった教訓)
+
+## 次にやること(2026-07-26時点、優先順)
+
+1. **S3への手動アップロード完了確認**: `frontend/`の4ファイル
+   (`index.html`・`styles.css`・`app.js`・`accidents.geojson`、事故マーカー
+   色統一の修正済み)をAWS S3コンソールから`niikun.net`バケットの
+   `traffic_accident/`に手動アップロード(この開発機にはAWS CLI認証情報が
+   無いため)。CloudFrontを使っている場合はキャッシュ無効化(`/traffic_accident/*`)
+   も忘れずに。アップロード後、実際に`niikun.net/traffic_accident`を開いて
+   ルート検索→Cloudflareバックエンドが呼ばれる・事故マーカーが赤で統一
+   されていることを確認する
+2. **Cloudflareハッカソン特典の申請継続**: Googleフォーム申請→事務局登録→
+   招待メール受信→チーム切り替え(Cloudflareアカウント作成・実際のデプロイは
+   完了済みだが、特典適用前の通常課金で動いている可能性があるため、正式適用の
+   確認を)
+3. **GitHubバックアップ**(特典終了2026-09-30予定より十分前に):
+   - `tsugaku-navi-cloudflare`(デプロイバンドル、`.gitignore`で`osm_data/`
+     除外済み)
+   - `tsugaku-navi`本体(`frontend/`統合後の状態。まだ一度もコミットして
+     いない新規ファイルが大量にある想定、`git status`で確認してから)
+4. 動作確認3ケース(23区内・多摩・境界またぎ)をデプロイ後の新エンドポイントに
+   対して再実施
+5. 企画書・ピッチ資料の最終化(旧OSM版・旧HuggingFace版への言及がないことを
+   確認)

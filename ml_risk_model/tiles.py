@@ -43,7 +43,7 @@ DEFAULT_TILE_STYLE = "std"
 
 # 地理院タイルの利用規約に明示的なレート制限の記載はないが、OSM対応時と
 # 同水準の保守的な間隔を踏襲する(常識的な利用を維持するため)。
-USER_AGENT = "tsugaku-navi-gsi/1.0 (contact: niikun0209@gmail.com; educational hackathon project)"
+USER_AGENT = "tsugaku-navi/1.0 (contact: niikun0209@gmail.com; educational hackathon project)"
 TILE_MIN_INTERVAL_SEC = 0.5
 
 TILE_URL_TEMPLATE = "https://cyberjapandata.gsi.go.jp/xyz/{style}/{z}/{x}/{y}.png"
