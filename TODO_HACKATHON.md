@@ -34,12 +34,11 @@
         注意書きをUI上に出すことも検討する
 - [x] **`tsugaku-navi`本体のGitHubバックアップ**(2026-08-01確認済み): `git status`は
       クリーン、`origin/main`に追従済み。追加の作業は不要
-- [ ] **`tsugaku-navi-cloudflare`(デプロイバンドル一式)のGitHubバックアップ**
-      (2026-08-01対応): これまでgit管理下になかったため`git init`・`.gitignore`
-      確認(`osm_data/`・`node_modules/`・`.wrangler/`が正しく除外されることを
-      確認済み)・ローカルコミット(`952263b`、25ファイル)まで完了。
-      **残作業(ユーザー確認要)**: GitHub上にリモートリポジトリを作成し
-      `git push`するかはユーザー判断(公開/非公開の選択も含む)
+- [x] **`tsugaku-navi-cloudflare`(デプロイバンドル一式)のGitHubバックアップ**
+      (2026-08-02完了): `git init`・`.gitignore`確認(`osm_data/`・
+      `node_modules/`・`.wrangler/`が正しく除外されることを確認済み)・
+      ローカルコミット(`952263b`、25ファイル)に続き、リモートリポジトリへの
+      `git push`まで完了
 
 ## B. 提出物の準備(ハッカソン募集要項ベース)
 
