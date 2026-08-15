@@ -65,7 +65,12 @@
 ファイルは`.gitignore`で除外する(コミットしない)。
 
 1. **条件1**: 個々のOSM要素は集計統計のみであること
-   (例: 「このセル内の信号機の数」はOK。信号機ごとの座標列はNG)
+   (例: 「このセル内の信号機の数」はOK。信号機ごとの座標列はNG。
+   「最寄りの信号機までの距離」も、多数地点分を面的に持つと三点測量で
+   元の座標を再構成できてしまうためNG扱いとする
+   ([ml_risk_model/osm_feature_lookup.py](ml_risk_model/osm_feature_lookup.py)の
+   `NEAREST_POINT_COLS`参照。`osm_features/`にはこの列を含めず、
+   `osm_data/`側にのみフル版を保持する)
 2. **条件2**: 帰属表示があること(ファイル自体のヘッダーコメント、または
    READMEの該当箇所に「OpenStreetMapデータを集計。© OpenStreetMap
    contributors, Open Database License」等の一文を付す)

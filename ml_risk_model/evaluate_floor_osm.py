@@ -41,18 +41,24 @@ def load_joined(style, is_eval):
     accident_countは常にmanifest側の値を正とする(osm_features_*.csv自身の
     同名列は生成時点のコピーに過ぎず、別のmanifestを渡すと古いまま残る
     バグを旧リポジトリで一度出したため)。
+
+    signal_nearest_m/crossing_nearest_mは個々のOSM要素(信号機・横断歩道)の
+    座標に由来し、500mメッシュで面的に持つと最近傍点の位置を実質的に再構成
+    できてしまうためコミット対象の`osm_features/`には置かない(README.md
+    「OSMベクターデータ」節参照)。このフロア評価専用に、gitignore対象の
+    `osm_data/osm_features_full_*.csv`(nearest_m列を含むフル版)を読む。
     """
     if is_eval:
         manifest_path = os.path.join(BASE_DIR, "eval_frozen", style, "500m", "eval_manifest.csv")
-        osm_name = f"osm_features_eval_{style}.csv"
+        osm_name = f"osm_features_full_eval_{style}.csv"
     else:
         manifest_path = os.path.join(BASE_DIR, "dataset", f"manifest_train_counts_500m_{style}.csv")
-        osm_name = f"osm_features_train_{style}.csv"
+        osm_name = f"osm_features_full_train_{style}.csv"
 
     with open(manifest_path, encoding="utf-8") as f:
         manifest_rows = {r["cell_id"]: r for r in csv.DictReader(f)}
 
-    osm_path = os.path.join(BASE_DIR, "osm_features", osm_name)
+    osm_path = os.path.join(BASE_DIR, "osm_data", osm_name)
     with open(osm_path, encoding="utf-8") as f:
         osm_rows = list(csv.DictReader(f))
 

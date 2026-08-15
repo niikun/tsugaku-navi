@@ -7,12 +7,17 @@
 - `osm_data/osm_raw_cache_500m.pkl`(extract_osm_raw_cache.py出力): 信号機・
   横断歩道の個別座標を含む生キャッシュ、常にgitignore対象
 
-最近傍距離(signal_nearest_m/crossing_nearest_m)の計算にはどうしても個別座標が
-要るため、生キャッシュを実行時に読み込んで使う。ただしこのクラスは生キャッシュの
-中身を一切ファイルに書き戻さない(このプロセス内のメモリ上でのみ使い、
-`features_for`が返すのはスカラーの集計値のみ)。旧リポジトリの
-`OSMFeatureLookup`が集計と生ジオメトリを1つのpickleに混在させていた設計とは
-異なる(HANDOFF.md参照)。
+`features_for`が返すsignal_nearest_m/crossing_nearest_mは、その場で個別座標を
+参照して計算するスカラー値で、この関数自体は結果をどこにも書き戻さない
+(risk_model.pyのライブ推論はこの値をレスポンスとして返すだけで永続化しない)。
+
+ただし、この最近傍距離を500mメッシュで面的に(多数の地点について)ファイルへ
+書き出すと、複数地点からの距離を組み合わせた三点測量で個々の信号機・横断歩道の
+座標を実質的に再構成できてしまう。単純な「件数」集計とは性質が異なり
+コミット対象にはできないため、`main()`が生成する学習・評価用CSVでは
+nearest_m系の列を`osm_features/`(コミット対象)には含めず、`osm_data/`
+(常にgitignore対象)にフル版を書き出す。evaluate_floor_osm.py等、
+nearest_m系特徴が必要な評価専用スクリプトはそちらを参照する。
 """
 import csv
 import json
@@ -26,6 +31,10 @@ RAW_CACHE_PATH = os.path.join(BASE_DIR, "osm_data", "osm_raw_cache_500m.pkl")
 GRID_M = 500
 
 MAIN_HIGHWAY_TYPES = ["primary", "secondary", "tertiary", "residential", "service", "unclassified", "trunk"]
+
+# 個々のOSM要素(信号機・横断歩道)の座標に由来し、面的に持つと元座標を
+# 再構成できてしまう列。コミット対象のosm_features/には含めない。
+NEAREST_POINT_COLS = ("signal_nearest_m", "crossing_nearest_m")
 
 
 def haversine_m(lat1, lon1, lat2, lon2):
@@ -154,15 +163,31 @@ def main():
     ]
     eval_table = build_table(eval_rows, lookup)
 
-    out_dir = os.path.join(BASE_DIR, "osm_features")
-    os.makedirs(out_dir, exist_ok=True)
+    safe_dir = os.path.join(BASE_DIR, "osm_features")
+    full_dir = os.path.join(BASE_DIR, "osm_data")
+    os.makedirs(safe_dir, exist_ok=True)
+    os.makedirs(full_dir, exist_ok=True)
     for name, table in [("train", train_table), ("eval", eval_table)]:
-        out_path = os.path.join(out_dir, f"osm_features_{name}_{style}.csv")
-        with open(out_path, "w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=list(table[0].keys()))
+        all_cols = list(table[0].keys())
+
+        # フル版(nearest_m含む): 常にgitignore対象のosm_data/へ。
+        # evaluate_floor_osm.py等、nearest_m系特徴が必要な評価専用スクリプト用。
+        full_path = os.path.join(full_dir, f"osm_features_full_{name}_{style}.csv")
+        with open(full_path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=all_cols)
             writer.writeheader()
             writer.writerows(table)
-        print(f"{name}: {len(table)}件 -> {out_path}")
+
+        # 安全版(nearest_m除外): コミット対象のosm_features/へ。
+        safe_cols = [c for c in all_cols if c not in NEAREST_POINT_COLS]
+        safe_path = os.path.join(safe_dir, f"osm_features_{name}_{style}.csv")
+        with open(safe_path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=safe_cols)
+            writer.writeheader()
+            for row in table:
+                writer.writerow({k: row[k] for k in safe_cols})
+
+        print(f"{name}: {len(table)}件 -> full={full_path}, safe(commit可)={safe_path}")
 
 
 if __name__ == "__main__":
