@@ -25,11 +25,16 @@ def convert_csv_to_geojson(csv_file, output_file):
                 continue  # 座標が不正な場合はスキップ
 
             # GeoJSONのFeatureを作成
+            # properties: frontend/app.jsのポップアップ表示で実際に使う項目のみに
+            # 絞る(道路形状・事故類型・当事者の年齢/損傷程度・信号機は未使用)。
+            # 座標も小数点以下6桁(約11cm精度、この用途には十分)に丸める。
+            # フル項目・フル精度が必要な場合はこの絞り込みを外せば復元できる
+            # (元のtokyo_pedestrian_accidents.csvは全項目を保持している)。
             feature = {
                 "type": "Feature",
                 "geometry": {
                     "type": "Point",
-                    "coordinates": [lon, lat]  # GeoJSONは [経度, 緯度] の順
+                    "coordinates": [round(lon, 6), round(lat, 6)]  # GeoJSONは [経度, 緯度] の順
                 },
                 "properties": {
                     "year": row.get('発生日時　　年', ''),
@@ -39,13 +44,6 @@ def convert_csv_to_geojson(csv_file, output_file):
                     "minute": row.get('発生日時　　分', ''),
                     "day_night": row.get('昼夜', ''),
                     "weather": row.get('天候', ''),
-                    "road_shape": row.get('道路形状', ''),
-                    "accident_type": row.get('事故類型', ''),
-                    "injury_level_a": row.get('人身損傷程度（当事者A）', ''),
-                    "injury_level_b": row.get('人身損傷程度（当事者B）', ''),
-                    "age_a": row.get('年齢（当事者A）', ''),
-                    "age_b": row.get('年齢（当事者B）', ''),
-                    "signal": row.get('信号機', ''),
                     "deaths": row.get('死者数', ''),
                     "injuries": row.get('負傷者数', '')
                 }

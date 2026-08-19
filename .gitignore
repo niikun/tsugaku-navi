@@ -63,6 +63,10 @@ plateau/plateau_data/
 ml_risk_model/models/*.pt
 *.pt
 
+# デモ動画・スクリーンショット(容量が大きく、収録し直すたびに差し替わる
+# バイナリのためリポジトリには含めない。Canva/YouTube等で別途共有する)
+demo/
+
 # 秘密情報
 .env
 *.env

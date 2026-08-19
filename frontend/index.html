@@ -65,6 +65,7 @@
                 <div id="result-area"></div>
                 <button id="ai-ask-btn" disabled>🤖 AIにきいてみる</button>
                 <div id="ai-legend" hidden>
+                    <div class="ai-disclaimer">⚠️ これはAIによる<strong>推定</strong>です。安全を保証するものではありません。かならず大人といっしょに、実際に歩いて確認してください。</div>
                     <span class="legend-heat-bar legend-heat-bar-ai"></span>
                     <span>AIがよそくしたきけんど（あんぜん→きけん）</span>
                     <span><i class="legend-dot legend-dot-accident"></i>じこがおきたばしょ</span>
@@ -79,14 +80,20 @@
     </div>
 
     <div id="map-legend" class="floating-panel">
-        <span class="legend-heat-bar legend-heat-bar-history"></span>
-        <span>じこのおおさ（すくない→おおい）</span>
-        <span class="map-legend-hint">ズームすると1件ずつ見られるよ</span>
+        <div class="map-legend-row">
+            <span class="legend-heat-bar legend-heat-bar-history"></span>
+            <span>じこのおおさ（すくない→おおい）</span>
+            <span class="map-legend-hint">ズームすると1件ずつ見られるよ</span>
+        </div>
+        <div class="map-legend-row">
+            <span><i class="legend-dot legend-dot-school"></i>がっこう（都内15区）</span>
+        </div>
     </div>
 
     <footer class="floating-panel">
         <div class="data-source">
-            データ出典: <a href="https://www.npa.go.jp/publications/statistics/koutsuu/opendata/index_opendata.html" target="_blank" rel="noopener noreferrer">警察庁交通事故統計情報オープンデータ</a>（2019年1月～2024年12月）
+            データ出典: <a href="https://catalog.data.metro.tokyo.lg.jp/dataset?q=%E6%95%99%E8%82%B2%E6%A9%9F%E9%96%A2%E4%B8%80%E8%A6%A7" target="_blank" rel="noopener noreferrer">都内15区教育機関一覧</a>（東京都オープンデータカタログサイト、CC BY 4.0）、
+            <a href="https://www.npa.go.jp/publications/statistics/koutsuu/opendata/index_opendata.html" target="_blank" rel="noopener noreferrer">警察庁交通事故統計情報オープンデータ</a>（2019年1月～2024年12月）
         </div>
     </footer>
 

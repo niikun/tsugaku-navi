@@ -37,6 +37,7 @@ aws s3 sync . $DESTINATION \
     --include "styles.css" \
     --include "app.js" \
     --include "accidents.geojson" \
+    --include "schools.geojson" \
     --delete
 
 if [ $? -eq 0 ]; then

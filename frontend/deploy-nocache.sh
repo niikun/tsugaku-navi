@@ -54,6 +54,12 @@ aws s3 cp accidents.geojson $DESTINATION/accidents.geojson \
     --cache-control "max-age=3600, public" \
     --metadata-directive REPLACE
 
+# GeoJSONデータ（学校位置、長めのキャッシュ: 1時間）
+echo "⬆️  schools.geojson をアップロード中..."
+aws s3 cp schools.geojson $DESTINATION/schools.geojson \
+    --cache-control "max-age=3600, public" \
+    --metadata-directive REPLACE
+
 if [ $? -eq 0 ]; then
     echo ""
     echo "✅ アップロード完了！"

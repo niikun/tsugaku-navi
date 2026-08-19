@@ -215,11 +215,17 @@ button:active {
     bottom: 14px;
     padding: 7px 12px;
     display: flex;
-    align-items: center;
-    gap: 7px;
+    flex-direction: column;
+    gap: 4px;
     font-size: 0.7rem;
     color: var(--color-text-muted);
     max-width: min(60vw, 260px);
+}
+
+.map-legend-row {
+    display: flex;
+    align-items: center;
+    gap: 7px;
 }
 
 .map-legend-hint {
@@ -287,6 +293,20 @@ button:active {
 
 .detour-hint[hidden] {
     display: none;
+}
+
+/* AIの危険度は推定値であり、安全を保証するものではないことを明示する注意書き。
+   #ai-legend(flex-wrap)の中で常に単独の行になるようflex-basis:100%にしている。 */
+.ai-disclaimer {
+    flex-basis: 100%;
+    color: #9A6B00;
+    background-color: #FFF6E5;
+    border: 1px solid #F0DBA6;
+    font-size: 0.72rem;
+    line-height: 1.5;
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    margin-bottom: 4px;
 }
 
 .result-text {
@@ -444,6 +464,7 @@ footer {
 }
 
 .legend-dot-accident { background-color: #e74c3c; border: 1.5px solid #c0392b; }
+.legend-dot-school { background-color: #2563EB; border: 1.5px solid #1D4ED8; }
 .legend-dot-crossing-signal { background-color: #0E9F8E; border: 1.5px solid #FFFFFF; }
 .legend-dot-crossing-marked { background-color: #F0A020; border: 1.5px solid #FFFFFF; }
 .legend-dot-crossing-unmarked { background-color: #D6249F; border: 1.5px solid #FFFFFF; }

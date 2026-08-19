@@ -10,6 +10,7 @@ const state = {
     accidentsData: null,
     accidentMarkers: null,
     accidentHeatLayer: null,
+    schoolsLayer: null,
     homeMarker: null,
     schoolMarker: null,
     routingControl: null,
@@ -94,10 +95,14 @@ function initMap() {
         gradient: { 0.15: '#4CAF50', 0.4: '#F1C40F', 0.65: '#E67E22', 0.9: '#C0392B' }
     });
     state.aiAccidentLayer = L.layerGroup();
+    // 新宿区の区立小中学校(東京都オープンデータカタログ経由、40校のみ)。
+    // 件数が少ないため、事故ヒートマップと違ってズームに関係なく常時表示する。
+    state.schoolsLayer = L.layerGroup();
 
     state.map.addLayer(state.accidentHeatLayer);
     state.map.addLayer(state.aiRiskLayer);
     state.map.addLayer(state.aiAccidentLayer);
+    state.map.addLayer(state.schoolsLayer);
     state.map.on('click', handleMapClick);
 
     // ズームが浅いうち(市区町村スケール)はヒートマップだけにして地図をすっきり見せ、
@@ -170,6 +175,40 @@ async function loadAccidentData() {
     } catch (error) {
         console.error('事故データの読み込みに失敗しました:', error);
         document.getElementById('result-area').innerHTML = '<span class="warning-text">エラー: データの読み込みに失敗しました</span>';
+    }
+}
+
+// 新宿区教育機関一覧(東京都オープンデータカタログサイト、自治体標準データセット、CC BY 4.0)。
+// 「がっこうをきめる」の検索対象そのもの(区立小中学校)を地図上に見える化することで、
+// 通学路の起点・終点になりうる場所を事前に把握できるようにする。
+async function loadSchoolsData() {
+    try {
+        const response = await fetch('schools.geojson');
+        const data = await response.json();
+
+        data.features.forEach(feature => {
+            const [lon, lat] = feature.geometry.coordinates;
+            const props = feature.properties;
+
+            const marker = L.circleMarker([lat, lon], {
+                radius: 5,
+                color: '#1D4ED8',
+                fillColor: '#2563EB',
+                weight: 1.5,
+                fillOpacity: 0.85
+            });
+
+            marker.bindPopup(`
+                <div style="min-width: 160px; font-size: 0.9rem;">
+                    <strong style="color: #1D4ED8;">🏫 ${props.name}</strong><br>
+                    <strong>しゅるい:</strong> ${props.type}<br>
+                    <strong>ばしょ:</strong> ${props.ward}${props.address}
+                </div>
+            `);
+            state.schoolsLayer.addLayer(marker);
+        });
+    } catch (error) {
+        console.error('学校データの読み込みに失敗しました:', error);
     }
 }
 
@@ -707,6 +746,7 @@ async function initApp() {
         return;
     }
     await loadAccidentData();
+    await loadSchoolsData();
 }
 
 document.addEventListener('DOMContentLoaded', initApp);
