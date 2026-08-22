@@ -2,6 +2,16 @@
 
 歩行者事故リスクを地図タイル画像+CNNで推定するモデルのリポジトリ。
 
+## ライセンス
+
+本リポジトリのコード(niikunが作成した部分)は、[MITライセンス](LICENSE-MIT)と
+[Apache License 2.0](LICENSE-APACHE)のデュアルライセンスの下で公開しています。
+利用者はどちらか一方(または両方)を選んで使用できます。
+
+依存ライブラリ・利用データそれぞれのライセンス([OpenStreetMap](https://www.openstreetmap.org/copyright)のODbL、
+各種オープンデータのCC BY 4.0など)は下記「データ出典・利用規約」および
+[slides/09_license.md](slides/09_license.md)を参照してください。
+
 ## データ出典・利用規約
 
 ### 都内15区の教育機関一覧(東京都オープンデータカタログサイト)
